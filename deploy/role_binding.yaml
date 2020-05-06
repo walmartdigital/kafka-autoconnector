@@ -1,0 +1,11 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kafka-autoconnector
+subjects:
+- kind: ServiceAccount
+  name: kafka-autoconnector
+roleRef:
+  kind: Role
+  name: kafka-autoconnector
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-autoconnector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: kafka-autoconnector
+  template:
+    metadata:
+      labels:
+        name: kafka-autoconnector
+    spec:
+      serviceAccountName: kafka-autoconnector
+      containers:
+        - name: kafka-autoconnector
+          # Replace this with the built image name
+          image: REPLACE_IMAGE
+          command:
+          - kafka-autoconnector
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "kafka-autoconnector"
