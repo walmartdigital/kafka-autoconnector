@@ -3,15 +3,11 @@ package essinkconnector
 import (
 	"context"
 
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -19,7 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_essinkconnector")
+var controllerName = "controller_essinkconnector"
+var log = logf.Log.WithName(controllerName)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -34,7 +31,9 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileESSinkConnector{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileESSinkConnector{
+		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -46,17 +45,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource ESSinkConnector
+	// err = c.Watch(&source.Kind{Type: &examplev1alpha1.MyCRD{}}, &handler.EnqueueRequestForObject{}, util.ResourceGenerationOrFinalizerChangedPredicate{})
 	err = c.Watch(&source.Kind{Type: &skynetv1alpha1.ESSinkConnector{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner ESSinkConnector
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &skynetv1alpha1.ESSinkConnector{},
-	})
 	if err != nil {
 		return err
 	}
@@ -71,8 +61,7 @@ var _ reconcile.Reconciler = &ReconcileESSinkConnector{}
 type ReconcileESSinkConnector struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	util.ReconcilerBase
 }
 
 // Reconcile reads that state of the cluster for a ESSinkConnector object and makes changes based on the state read
@@ -88,9 +77,9 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 
 	// Fetch the ESSinkConnector instance
 	instance := &skynetv1alpha1.ESSinkConnector{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.GetClient().Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -100,54 +89,60 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
-
-	// Set ESSinkConnector instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
+	if ok, err := r.IsValid(instance); !ok {
+		return r.ManageError(instance, err)
 	}
 
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+	if ok := r.IsInitialized(instance); !ok {
+		err := r.GetClient().Update(context.TODO(), instance)
 		if err != nil {
-			return reconcile.Result{}, err
+			log.Error(err, "unable to update instance", "instance", instance)
+			return r.ManageError(instance, err)
 		}
-
-		// Pod created successfully - don't requeue
 		return reconcile.Result{}, nil
-	} else if err != nil {
-		return reconcile.Result{}, err
 	}
 
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+	if util.IsBeingDeleted(instance) {
+		if !util.HasFinalizer(instance, controllerName) {
+			return reconcile.Result{}, nil
+		}
+		err := r.ManageCleanUpLogic(instance)
+		if err != nil {
+			log.Error(err, "unable to delete instance", "instance", instance)
+			return r.ManageError(instance, err)
+		}
+		util.RemoveFinalizer(instance, controllerName)
+		err = r.GetClient().Update(context.TODO(), instance)
+		if err != nil {
+			log.Error(err, "unable to update instance", "instance", instance)
+			return r.ManageError(instance, err)
+		}
+		return reconcile.Result{}, nil
+	}
+
+	err = r.ManageOperatorLogic(instance)
+	if err != nil {
+		return r.ManageError(instance, err)
+	}
+	return r.ManageSuccess(instance)
+}
+
+func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object) error {
+	log.Info("Calling ManageOperatorLogic")
+	return nil
+}
+
+func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.Result, error) {
+	log.Info("Calling ManageSuccess")
 	return reconcile.Result{}, nil
 }
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *skynetv1alpha1.ESSinkConnector) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
-	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
-	}
+func (r *ReconcileESSinkConnector) ManageCleanUpLogic(obj metav1.Object) error {
+	log.Info("Calling ManageCleanUpLogic")
+	return nil
+}
+
+func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, err error) (reconcile.Result, error) {
+	log.Info("Calling ManageError")
+	return reconcile.Result{}, nil
 }

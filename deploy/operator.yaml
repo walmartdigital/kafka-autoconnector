@@ -16,7 +16,7 @@ spec:
       containers:
         - name: kafka-autoconnector
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: chindou/kafka-autoconnector
           command:
           - kafka-autoconnector
           imagePullPolicy: Always
