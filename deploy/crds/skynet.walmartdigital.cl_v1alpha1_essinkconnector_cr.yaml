@@ -1,0 +1,7 @@
+apiVersion: skynet.walmartdigital.cl/v1alpha1
+kind: ESSinkConnector
+metadata:
+  name: example-essinkconnector
+spec:
+  # Add fields here
+  size: 3
