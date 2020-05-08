@@ -1,32 +1,16 @@
 package v1alpha1
 
 import (
+	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-// ConnectorConfig ...
-type ConnectorConfig struct {
-	Name                         string `json:"name,omitempty"`
-	ConnectorClass               string `json:"connector.class"`
-	DocumentType                 string `json:"type.name"`
-	Topics                       string `json:"topics"`
-	TopicIndexMap                string `json:"topic.index.map"`
-	BatchSize                    string `json:"batch.size"`
-	ConnectionURL                string `json:"connection.url"`
-	KeyIgnore                    string `json:"key.ignore"`
-	SchemaIgnore                 string `json:"schema.ignore"`
-	Type                         string `json:"type,omitempty"`
-	BehaviorOnMalformedDocuments string `json:"behavior.on.malformed.documents,omitempty"`
-}
 
 // ESSinkConnectorSpec defines the desired state of ESSinkConnector
 type ESSinkConnectorSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	Config ConnectorConfig `json:"connector.config"`
+	Config kafkaconnect.ConnectorConfig `json:"connector.config"`
 }
 
 // ESSinkConnectorStatus defines the observed state of ESSinkConnector

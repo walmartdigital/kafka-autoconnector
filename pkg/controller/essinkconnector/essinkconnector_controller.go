@@ -94,6 +94,7 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 	}
 
 	if ok := r.IsInitialized(instance); !ok {
+		log.Info("CR has already been initialized")
 		err := r.GetClient().Update(context.TODO(), instance)
 		if err != nil {
 			log.Error(err, "unable to update instance", "instance", instance)
@@ -103,6 +104,7 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 	}
 
 	if util.IsBeingDeleted(instance) {
+		log.Info("CR is being deleted")
 		if !util.HasFinalizer(instance, controllerName) {
 			return reconcile.Result{}, nil
 		}
@@ -130,6 +132,16 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object) error {
 	log.Info("Calling ManageOperatorLogic")
 	return nil
+}
+
+func (r *ReconcileESSinkConnector) IsValid(obj metav1.Object) (bool, error) {
+	log.Info("Validating CR")
+	return true, nil
+}
+
+func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
+	log.Info("Validating CR")
+	return false
 }
 
 func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.Result, error) {
