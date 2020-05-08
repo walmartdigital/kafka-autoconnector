@@ -30,9 +30,41 @@ spec:
           type: object
         spec:
           description: KafkaConnectSpec defines the desired state of KafkaConnect
+          properties:
+            kafkaconnect.url:
+              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                Important: Run "operator-sdk generate k8s" to regenerate code after
+                modifying this file Add custom validation using kubebuilder tags:
+                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              type: string
+          required:
+          - kafkaconnect.url
           type: object
         status:
           description: KafkaConnectStatus defines the observed state of KafkaConnect
+          properties:
+            active.connectors:
+              items:
+                type: string
+              type: array
+            commit:
+              type: string
+            connector.count:
+              type: integer
+            kafka.cluster.id:
+              type: string
+            version:
+              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                of cluster Important: Run "operator-sdk generate k8s" to regenerate
+                code after modifying this file Add custom validation using kubebuilder
+                tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              type: string
+          required:
+          - active.connectors
+          - commit
+          - connector.count
+          - kafka.cluster.id
+          - version
           type: object
       type: object
   version: v1alpha1

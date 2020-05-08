@@ -30,9 +30,65 @@ spec:
           type: object
         spec:
           description: ESSinkConnectorSpec defines the desired state of ESSinkConnector
+          properties:
+            connector.config:
+              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                Important: Run "operator-sdk generate k8s" to regenerate code after
+                modifying this file Add custom validation using kubebuilder tags:
+                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              properties:
+                batch.size:
+                  type: string
+                behavior.on.malformed.documents:
+                  type: string
+                connection.url:
+                  type: string
+                connector.class:
+                  type: string
+                key.ignore:
+                  type: string
+                name:
+                  type: string
+                schema.ignore:
+                  type: string
+                topic.index.map:
+                  type: string
+                topics:
+                  type: string
+                type:
+                  type: string
+                type.name:
+                  type: string
+              required:
+              - batch.size
+              - connection.url
+              - connector.class
+              - key.ignore
+              - schema.ignore
+              - topic.index.map
+              - topics
+              - type.name
+              type: object
+          required:
+          - connector.config
           type: object
         status:
           description: ESSinkConnectorStatus defines the observed state of ESSinkConnector
+          properties:
+            name:
+              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                of cluster Important: Run "operator-sdk generate k8s" to regenerate
+                code after modifying this file Add custom validation using kubebuilder
+                tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              type: string
+            tasks:
+              type: integer
+            topics:
+              type: string
+          required:
+          - name
+          - tasks
+          - topics
           type: object
       type: object
   version: v1alpha1

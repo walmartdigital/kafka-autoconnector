@@ -2,7 +2,9 @@ package essinkconnector
 
 import (
 	"context"
+	"errors"
 
+	"github.com/chinniehendrix/go-kaya/pkg/validator"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -136,11 +138,25 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object) error 
 
 func (r *ReconcileESSinkConnector) IsValid(obj metav1.Object) (bool, error) {
 	log.Info("Validating CR")
+
+	connector, ok := obj.(*skynetv1alpha1.ESSinkConnector)
+	v := validator.New()
+
+	if !ok {
+		return false, errors.New("Object not ESSinkConnector")
+	} else {
+		config := connector.Spec.Config
+
+		err := v.Struct(config)
+		if err != nil {
+			return false, err
+		}
+	}
 	return true, nil
 }
 
 func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
-	log.Info("Validating CR")
+	log.Info("Checking if CR already exists")
 	return false
 }
 

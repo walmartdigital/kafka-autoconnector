@@ -35,14 +35,24 @@ var _ = Describe("Run Reconcile", func() {
 		fakeEventRecorder *mocks.MockEventRecorder
 		fakeClient        *mocks.MockClient
 		r                 *essinkconnector.ReconcileESSinkConnector
-
-		ctx    context.Context
-		cancel context.CancelFunc
 	)
 
 	BeforeEach(func() {
 		fakeEventRecorder = mocks.NewMockEventRecorder(ctrl)
 		fakeClient = mocks.NewMockClient(ctrl)
+
+		config := kafkaconnect.ConnectorConfig{
+			Name:                         "amida.logging",
+			ConnectorClass:               "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+			DocumentType:                 "log",
+			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
+			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
+			BatchSize:                    "100",
+			ConnectionURL:                "https://es.tools-flsojt.walmartdigital.cl/kibana",
+			KeyIgnore:                    "true",
+			SchemaIgnore:                 "true",
+			BehaviorOnMalformedDocuments: "ignore",
+		}
 
 		essink = &skynetv1alpha1.ESSinkConnector{
 			ObjectMeta: metav1.ObjectMeta{
@@ -50,16 +60,12 @@ var _ = Describe("Run Reconcile", func() {
 				Namespace: "default",
 			},
 			Spec: skynetv1alpha1.ESSinkConnectorSpec{
-				Config: kafkaconnect.ConnectorConfig{},
+				Config: config,
 			},
 		}
 
-		// objs := []runtime.Object{essink}
-
 		s := scheme.Scheme
 		s.AddKnownTypes(skynetv1alpha1.SchemeGroupVersion, essink)
-
-		// cl := fake.NewFakeClient(objs...)
 
 		r = &essinkconnector.ReconcileESSinkConnector{
 			ReconcilerBase: util.NewReconcilerBase(
@@ -69,11 +75,6 @@ var _ = Describe("Run Reconcile", func() {
 				fakeEventRecorder,
 			),
 		}
-
-		ctx, cancel = context.WithCancel(context.Background())
-		_ = ctx
-		_ = cancel
-
 	})
 
 	It("run Reconcile", func() {
@@ -83,7 +84,7 @@ var _ = Describe("Run Reconcile", func() {
 		}
 		fakeClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
 			nil,
-		).Times(1)
+		).Times(1).SetArg(2, *essink)
 
 		req := reconcile.Request{
 			NamespacedName: name,
