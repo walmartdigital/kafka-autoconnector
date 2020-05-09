@@ -42,7 +42,7 @@ var _ = Describe("Run Reconcile", func() {
 		fakeClient = mocks.NewMockClient(ctrl)
 
 		config := kafkaconnect.ConnectorConfig{
-			Name:                         "amida.logging",
+			// Name:                         "amida.logging",
 			ConnectorClass:               "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
 			DocumentType:                 "log",
 			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
@@ -56,7 +56,7 @@ var _ = Describe("Run Reconcile", func() {
 
 		essink = &skynetv1alpha1.ESSinkConnector{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "blah",
+				Name:      "amida.logging",
 				Namespace: "default",
 			},
 			Spec: skynetv1alpha1.ESSinkConnectorSpec{
@@ -85,6 +85,10 @@ var _ = Describe("Run Reconcile", func() {
 		fakeClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
 			nil,
 		).Times(1).SetArg(2, *essink)
+
+		fakeClient.EXPECT().Update(context.TODO(), gomock.Any()).Return(
+			nil,
+		).Times(1)
 
 		req := reconcile.Request{
 			NamespacedName: name,

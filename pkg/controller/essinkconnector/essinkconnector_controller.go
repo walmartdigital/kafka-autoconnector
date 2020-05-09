@@ -7,6 +7,7 @@ import (
 	"github.com/chinniehendrix/go-kaya/pkg/validator"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
+	"github.com/walmartdigital/kafka-autoconnector/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -92,7 +93,7 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 	}
 
 	if ok := r.IsInitialized(instance); !ok {
-		log.Info("CR has already been initialized")
+		log.Info("CR has already not been initialized")
 		err := r.GetClient().Update(context.TODO(), instance)
 		if err != nil {
 			log.Error(err, "unable to update instance", "instance", instance)
@@ -161,12 +162,12 @@ func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
 	connector, ok := obj.(*skynetv1alpha1.ESSinkConnector)
 
 	if !ok {
-		return false, errors.New("Object not ESSinkConnector")
+		return false
 	} else {
 		config := connector.Spec.Config
 
 		if config.Name == "" {
-			config.Name = connector.ObjectMeta.Name + "_" + esconnectorutils.randSeq(8)
+			config.Name = connector.ObjectMeta.Name + "_" + utils.RandSeq(8)
 			return false
 		}
 	}

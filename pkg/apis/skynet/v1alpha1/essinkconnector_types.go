@@ -18,9 +18,9 @@ type ESSinkConnectorStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	Name   string `json:"name"`
-	Topics string `json:"topics"`
-	Tasks  int    `json:"tasks"`
+	ConnectorName string `json:"connector.name"`
+	Topics        string `json:"topics"`
+	Tasks         int    `json:"tasks"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
