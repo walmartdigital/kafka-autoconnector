@@ -91,10 +91,6 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
-	if ok, err := r.IsValid(instance); !ok {
-		return r.ManageError(instance, err)
-	}
-
 	if ok := r.IsInitialized(instance); !ok {
 		log.Info("CR has already been initialized")
 		err := r.GetClient().Update(context.TODO(), instance)
@@ -103,6 +99,10 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 			return r.ManageError(instance, err)
 		}
 		return reconcile.Result{}, nil
+	}
+
+	if ok, err := r.IsValid(instance); !ok {
+		return r.ManageError(instance, err)
 	}
 
 	if util.IsBeingDeleted(instance) {
@@ -156,8 +156,22 @@ func (r *ReconcileESSinkConnector) IsValid(obj metav1.Object) (bool, error) {
 }
 
 func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
-	log.Info("Checking if CR already exists")
-	return false
+	log.Info("Checking if CR is initialized")
+
+	connector, ok := obj.(*skynetv1alpha1.ESSinkConnector)
+
+	if !ok {
+		return false, errors.New("Object not ESSinkConnector")
+	} else {
+		config := connector.Spec.Config
+
+		if config.Name == "" {
+			config.Name = connector.ObjectMeta.Name + "_" + esconnectorutils.randSeq(8)
+			return false
+		}
+	}
+
+	return true
 }
 
 func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.Result, error) {
