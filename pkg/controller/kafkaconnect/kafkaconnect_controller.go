@@ -3,6 +3,7 @@ package kafkaconnect
 import (
 	"context"
 
+	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,12 +29,12 @@ var log = logf.Log.WithName("controller_kafkaconnect")
 
 // Add creates a new KafkaConnect Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, factory kafkaconnect.KafkaConnectClientFactory) error {
+	return add(mgr, newReconciler(mgr, factory))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, factory kafkaconnect.KafkaConnectClientFactory) reconcile.Reconciler {
 	return &ReconcileKafkaConnect{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 

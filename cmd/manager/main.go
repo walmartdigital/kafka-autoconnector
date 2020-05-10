@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -17,6 +18,8 @@ import (
 	"github.com/walmartdigital/kafka-autoconnector/pkg/controller"
 	"github.com/walmartdigital/kafka-autoconnector/version"
 
+	"github.com/chinniehendrix/go-kaya/pkg/client"
+	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -46,6 +49,21 @@ func printVersion() {
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
+}
+
+type KCClientFactory struct {
+}
+
+func (kcf KCClientFactory) Create(host string, factory client.HTTPClientFactory) (kafkaconnect.KafkaConnectClient, error) {
+	config := client.HTTPClientConfig{
+		Headers:            map[string]string{"Content-type": "application/json"},
+		AuthType:           client.NoneAuth,
+		RetryCount:         3,
+		RetryWaitTime:      1 * time.Second,
+		RetryWaitMaxTime:   30 * time.Second,
+		RetryConditionFunc: nil,
+	}
+	return kafkaconnect.NewClient(host, config, factory)
 }
 
 func main() {
@@ -123,7 +141,7 @@ func main() {
 	}
 
 	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
+	if err := controller.AddToManager(mgr, KCClientFactory{}); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

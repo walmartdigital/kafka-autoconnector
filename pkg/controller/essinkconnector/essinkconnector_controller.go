@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/chinniehendrix/go-kaya/pkg/client"
+	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	"github.com/chinniehendrix/go-kaya/pkg/validator"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
@@ -20,6 +22,7 @@ import (
 
 var controllerName = "controller_essinkconnector"
 var log = logf.Log.WithName(controllerName)
+var kafkaConnectHost = "192.168.64.5:30256"
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -28,14 +31,15 @@ var log = logf.Log.WithName(controllerName)
 
 // Add creates a new ESSinkConnector Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, factory kafkaconnect.KafkaConnectClientFactory) error {
+	return add(mgr, newReconciler(mgr, factory))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, factory kafkaconnect.KafkaConnectClientFactory) reconcile.Reconciler {
 	return &ReconcileESSinkConnector{
-		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
+		ReconcilerBase:            util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
+		KafkaConnectClientFactory: factory,
 	}
 }
 
@@ -65,6 +69,7 @@ type ReconcileESSinkConnector struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	util.ReconcilerBase
+	kafkaconnect.KafkaConnectClientFactory
 }
 
 // Reconcile reads that state of the cluster for a ESSinkConnector object and makes changes based on the state read
@@ -105,6 +110,15 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 	if ok, err := r.IsValid(instance); !ok {
 		return r.ManageError(instance, err)
 	}
+
+	kcc, err0 := r.KafkaConnectClientFactory.Create(kafkaConnectHost, client.RestyClientFactory{})
+
+	if err0 != nil {
+		// TODO: need to understand how to convey outcome as part of Result struct
+		return reconcile.Result{}, err0
+	}
+
+	_ = kcc
 
 	if util.IsBeingDeleted(instance) {
 		log.Info("CR is being deleted")
