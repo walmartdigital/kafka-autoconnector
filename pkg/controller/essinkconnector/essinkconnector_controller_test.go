@@ -97,12 +97,35 @@ var _ = Describe("Run Reconcile", func() {
 			Name:      "blah",
 		}
 
+		resp := kafkaconnect.Response{
+			Result: "error",
+		}
+
 		fakeK8sClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
 			nil,
 		).Times(1).SetArg(2, *essink)
 
 		fakeKafkaConnectClientFactory.EXPECT().Create("192.168.64.5:30256", gomock.Any()).Return(
 			fakeKafkaConnectClient,
+			nil,
+		).Times(1)
+
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+			&resp,
+			nil,
+		).Times(1)
+
+		conObj := kafkaconnect.Connector{
+			Name:   essink.Spec.Config.Name,
+			Config: &essink.Spec.Config,
+		}
+
+		resp1 := kafkaconnect.Response{
+			Result: "success",
+		}
+
+		fakeKafkaConnectClient.EXPECT().Create(conObj).Return(
+			&resp1,
 			nil,
 		).Times(1)
 
