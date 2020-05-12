@@ -3,6 +3,7 @@ package essinkconnector
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/chinniehendrix/go-kaya/pkg/client"
 	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
@@ -13,6 +14,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -125,7 +127,7 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 		if !util.HasFinalizer(instance, controllerName) {
 			return reconcile.Result{}, nil
 		}
-		err := r.ManageCleanUpLogic(instance)
+		err := r.ManageCleanUpLogic(instance, kcc)
 		if err != nil {
 			log.Error(err, "unable to delete instance", "instance", instance)
 			return r.ManageError(instance, err)
@@ -158,7 +160,7 @@ func (r *ReconcileESSinkConnector) IsValid(obj metav1.Object) (bool, error) {
 	v := validator.New()
 
 	if !ok {
-		return false, errors.New("Object not ESSinkConnector")
+		return false, errors.New("Object is not of type ESSinkConnector")
 	} else {
 		config := connector.Spec.Config
 
@@ -172,12 +174,18 @@ func (r *ReconcileESSinkConnector) IsValid(obj metav1.Object) (bool, error) {
 
 func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
 	log.Info("Checking if CR is initialized")
+	initialized := true
 
 	connector, ok := obj.(*skynetv1alpha1.ESSinkConnector)
 
 	if !ok {
-		return false
+		initialized = false
 	} else {
+		if !util.HasFinalizer(connector, controllerName) {
+			controllerutil.AddFinalizer(connector, controllerName)
+			initialized = false
+		}
+
 		config := connector.Spec.Config
 
 		if config.Name == "" {
@@ -186,7 +194,7 @@ func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
 		}
 	}
 
-	return true
+	return initialized
 }
 
 func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.Result, error) {
@@ -194,9 +202,33 @@ func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.R
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileESSinkConnector) ManageCleanUpLogic(obj metav1.Object) error {
-	log.Info("Calling ManageCleanUpLogic")
-	return nil
+func (r *ReconcileESSinkConnector) ManageCleanUpLogic(obj metav1.Object, kcc kafkaconnect.KafkaConnectClient) error {
+	log.Info("Running clean up logic on ESSinkConnector")
+	connector, ok := obj.(*skynetv1alpha1.ESSinkConnector)
+
+	if !ok {
+		return errors.New("Object is not of type ESSinkConnector")
+	}
+
+	config := connector.Spec.Config
+
+	if config == (kafkaconnect.ConnectorConfig{}) {
+		return errors.New("Could not get configuration from ESSinkConnector")
+	}
+
+	if config.Name == "" {
+		return errors.New("Connector name is not set")
+	}
+
+	response, err := kcc.Delete(config.Name)
+
+	if response.Result == "success" {
+		log.Info(fmt.Sprintf("Connector %s deleted successfully", config.Name))
+		return nil
+	} else {
+		log.Info(fmt.Sprintf("Failed to delete connector %s", config.Name))
+		return err
+	}
 }
 
 func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, err error) (reconcile.Result, error) {
