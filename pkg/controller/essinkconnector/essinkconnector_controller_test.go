@@ -135,6 +135,76 @@ var _ = Describe("Run Reconcile", func() {
 		_, _ = r.Reconcile(req)
 	})
 
+	It("should update an existing KafkaConnect connector", func() {
+		name := types.NamespacedName{
+			Namespace: "default",
+			Name:      "blah",
+		}
+
+		newconfig := kafkaconnect.ConnectorConfig{
+			Name:                         "amida.logging",
+			ConnectorClass:               "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+			DocumentType:                 "log",
+			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
+			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
+			BatchSize:                    "100",
+			ConnectionURL:                "https://es.tools-flsojt.walmartdigital.cl/kibana",
+			KeyIgnore:                    "true",
+			SchemaIgnore:                 "true",
+			BehaviorOnMalformedDocuments: "warn",
+		}
+
+		newConnector := &skynetv1alpha1.ESSinkConnector{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "amida.logging",
+				Namespace: "default",
+			},
+			Spec: skynetv1alpha1.ESSinkConnectorSpec{
+				Config: newconfig,
+			},
+		}
+
+		resp := kafkaconnect.Response{
+			Result: "success",
+			Config: &essink.Spec.Config,
+		}
+
+		controllerutil.AddFinalizer(newConnector, controllerName)
+
+		fakeK8sClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
+			nil,
+		).Times(1).SetArg(2, *newConnector)
+
+		fakeKafkaConnectClientFactory.EXPECT().Create("192.168.64.5:30256", gomock.Any()).Return(
+			fakeKafkaConnectClient,
+			nil,
+		).Times(1)
+
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+			&resp,
+			nil,
+		).Times(1)
+
+		conObj := kafkaconnect.Connector{
+			Name:   newConnector.Spec.Config.Name,
+			Config: &newConnector.Spec.Config,
+		}
+
+		resp1 := kafkaconnect.Response{
+			Result: "success",
+		}
+
+		fakeKafkaConnectClient.EXPECT().Update(conObj).Return(
+			&resp1,
+			nil,
+		).Times(1)
+
+		req := reconcile.Request{
+			NamespacedName: name,
+		}
+		_, _ = r.Reconcile(req)
+	})
+
 	It("should delete an existing KafkaConnect connector", func() {
 		name := types.NamespacedName{
 			Namespace: "default",
