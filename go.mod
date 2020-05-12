@@ -6,6 +6,7 @@ require (
 	github.com/chinniehendrix/go-kaya v0.0.0-20200508230955-217336014d1e
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/golang/mock v1.3.1
+	github.com/google/go-cmp v0.4.0
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.8.1
