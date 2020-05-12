@@ -8,6 +8,7 @@ import (
 	"github.com/chinniehendrix/go-kaya/pkg/client"
 	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	"github.com/chinniehendrix/go-kaya/pkg/validator"
+	"github.com/google/go-cmp/cmp"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/utils"
@@ -25,6 +26,30 @@ import (
 var controllerName = "controller_essinkconnector"
 var log = logf.Log.WithName(controllerName)
 var kafkaConnectHost = "192.168.64.5:30256"
+
+var opt cmp.Option
+
+func init() {
+	opt = cmp.Comparer(func(a, b kafkaconnect.ConnectorConfig) bool {
+		if a == (kafkaconnect.ConnectorConfig{}) && b == (kafkaconnect.ConnectorConfig{}) {
+			return true
+		} else if a != (kafkaconnect.ConnectorConfig{}) && b != (kafkaconnect.ConnectorConfig{}) {
+			if a.Name == b.Name &&
+				a.ConnectorClass == b.ConnectorClass &&
+				a.DocumentType == b.DocumentType &&
+				a.Topics == b.Topics &&
+				a.TopicIndexMap == b.TopicIndexMap &&
+				a.BatchSize == b.BatchSize &&
+				a.ConnectionURL == b.ConnectionURL &&
+				a.KeyIgnore == b.KeyIgnore &&
+				a.SchemaIgnore == b.SchemaIgnore &&
+				a.BehaviorOnMalformedDocuments == b.BehaviorOnMalformedDocuments {
+				return true
+			}
+		}
+		return false
+	})
+}
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -120,8 +145,6 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err0
 	}
 
-	_ = kcc
-
 	if util.IsBeingDeleted(instance) {
 		log.Info("CR is being deleted")
 		if !util.HasFinalizer(instance, controllerName) {
@@ -141,15 +164,54 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, nil
 	}
 
-	err = r.ManageOperatorLogic(instance)
+	err = r.ManageOperatorLogic(instance, kcc)
 	if err != nil {
 		return r.ManageError(instance, err)
 	}
 	return r.ManageSuccess(instance)
 }
 
-func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object) error {
+func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc kafkaconnect.KafkaConnectClient) error {
 	log.Info("Calling ManageOperatorLogic")
+	connector, ok := obj.(*skynetv1alpha1.ESSinkConnector)
+
+	if !ok {
+		return errors.New("Object is not of type ESSinkConnector")
+	}
+
+	config := connector.Spec.Config
+
+	if config == (kafkaconnect.ConnectorConfig{}) {
+		return errors.New("Could not get configuration from ESSinkConnector")
+	}
+
+	conObj := kafkaconnect.Connector{
+		Name:   connector.Spec.Config.Name,
+		Config: &connector.Spec.Config,
+	}
+
+	response, _ := kcc.Read(config.Name)
+
+	if response.Result == "success" {
+		log.Info(fmt.Sprintf("Connector %s already exists, updating configuration", config.Name))
+
+		if !cmp.Equal(connector.Spec.Config, response.Config, opt) {
+			resp, err2 := kcc.Update(conObj)
+			if resp.Result == "success" {
+				return nil
+			} else {
+				return err2
+			}
+		}
+	} else {
+		log.Info(fmt.Sprintf("Failed to get connector %s", config.Name))
+		resp3, err3 := kcc.Create(conObj)
+		if resp3.Result == "success" {
+			return nil
+		} else {
+			return err3
+		}
+	}
 	return nil
 }
 
