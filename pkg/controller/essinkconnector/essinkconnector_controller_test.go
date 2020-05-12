@@ -3,6 +3,7 @@ package essinkconnector_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	"github.com/golang/mock/gomock"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -30,6 +32,10 @@ func TestAll(t *testing.T) {
 }
 
 var _ = Describe("Run Reconcile", func() {
+	const (
+		controllerName = "controller_essinkconnector"
+	)
+
 	var (
 		essink                        *skynetv1alpha1.ESSinkConnector
 		fakeEventRecorder             *mocks.MockEventRecorder
@@ -68,6 +74,8 @@ var _ = Describe("Run Reconcile", func() {
 			},
 		}
 
+		controllerutil.AddFinalizer(essink, controllerName)
+
 		s := scheme.Scheme
 		s.AddKnownTypes(skynetv1alpha1.SchemeGroupVersion, essink)
 
@@ -95,6 +103,50 @@ var _ = Describe("Run Reconcile", func() {
 
 		fakeKafkaConnectClientFactory.EXPECT().Create("192.168.64.5:30256", gomock.Any()).Return(
 			fakeKafkaConnectClient,
+			nil,
+		).Times(1)
+
+		req := reconcile.Request{
+			NamespacedName: name,
+		}
+		_, _ = r.Reconcile(req)
+	})
+
+	It("should delete an existing KafkaConnect connector", func() {
+		name := types.NamespacedName{
+			Namespace: "default",
+			Name:      "blah",
+		}
+
+		ts := metav1.Time{
+			Time: time.Now(),
+		}
+
+		// Mark object for deletion
+		essink.SetDeletionTimestamp(&ts)
+
+		fakeK8sClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
+			nil,
+		).Times(1).SetArg(2, *essink)
+
+		fakeKafkaConnectClientFactory.EXPECT().Create("192.168.64.5:30256", gomock.Any()).Return(
+			fakeKafkaConnectClient,
+			nil,
+		).Times(1)
+
+		resp := kafkaconnect.Response{
+			Result: "success",
+		}
+		fakeKafkaConnectClient.EXPECT().Delete(essink.Spec.Config.Name).Return(
+			&resp,
+			nil,
+		).Times(1).Do(
+			func(string) {
+				util.RemoveFinalizer(essink, controllerName)
+			},
+		)
+
+		fakeK8sClient.EXPECT().Update(context.TODO(), essink).Return(
 			nil,
 		).Times(1)
 
@@ -132,6 +184,8 @@ var _ = Describe("Run Reconcile", func() {
 				Config: invalidconf,
 			},
 		}
+
+		controllerutil.AddFinalizer(conn, controllerName)
 
 		fakeK8sClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
 			nil,
