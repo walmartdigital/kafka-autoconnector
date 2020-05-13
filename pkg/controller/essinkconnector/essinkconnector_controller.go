@@ -125,7 +125,7 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 	}
 
 	if ok := r.IsInitialized(instance); !ok {
-		log.Info("CR has already not been initialized")
+		log.Info("CR has not been initialized yet")
 		err := r.GetClient().Update(context.TODO(), instance)
 		if err != nil {
 			log.Error(err, "unable to update instance", "instance", instance)
@@ -242,16 +242,16 @@ func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
 
 	if !ok {
 		initialized = false
+		log.Info("Could not retrieve ESSinkConnector")
 	} else {
 		if !util.HasFinalizer(connector, controllerName) {
+			log.Info("Adding finalizer to ESSinkConnector")
 			controllerutil.AddFinalizer(connector, controllerName)
 			initialized = false
 		}
 
-		config := connector.Spec.Config
-
-		if config.Name == "" {
-			config.Name = connector.ObjectMeta.Name + "_" + utils.RandSeq(8)
+		if connector.Spec.Config.Name == "" {
+			connector.Spec.Config.Name = connector.ObjectMeta.Name + "_" + utils.RandSeq(8)
 			return false
 		}
 	}
