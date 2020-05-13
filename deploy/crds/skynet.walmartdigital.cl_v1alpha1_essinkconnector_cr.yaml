@@ -2,8 +2,15 @@ apiVersion: skynet.walmartdigital.cl/v1alpha1
 kind: ESSinkConnector
 metadata:
   name: example-essinkconnector
-  annotations:
-    foo: bar
+  namespace: default
 spec:
-  # Add fields here
-  size: 2
+  connector.config:
+    connector.class: "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector"
+    type.name: "log"
+    topics: "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs"
+    topic.index.map: "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>"
+    batch.size: "100"
+    connection.url: "https://es.tools-flsojt.walmartdigital.cl/kibana"
+    key.ignore: "true"
+    schema.ignore: "true"
+    behavior.on.malformed.documents: "ignore"
