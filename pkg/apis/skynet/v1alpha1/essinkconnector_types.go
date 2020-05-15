@@ -23,6 +23,10 @@ type ESSinkConnectorStatus struct {
 	Tasks         int    `json:"tasks"`
 }
 
+func (e ESSinkConnector) SetESSinkConnectorStatus(status ESSinkConnectorStatus) {
+	e.Status = status
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ESSinkConnector is the Schema for the essinkconnectors API

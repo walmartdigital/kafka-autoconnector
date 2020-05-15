@@ -4,16 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/chinniehendrix/go-kaya/pkg/client"
 	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	"github.com/chinniehendrix/go-kaya/pkg/validator"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhat-cop/operator-utils/pkg/util"
+	"github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -79,8 +82,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource ESSinkConnector
-	// err = c.Watch(&source.Kind{Type: &examplev1alpha1.MyCRD{}}, &handler.EnqueueRequestForObject{}, util.ResourceGenerationOrFinalizerChangedPredicate{})
-	err = c.Watch(&source.Kind{Type: &skynetv1alpha1.ESSinkConnector{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &skynetv1alpha1.ESSinkConnector{}}, &handler.EnqueueRequestForObject{}, util.ResourceGenerationOrFinalizerChangedPredicate{})
+	// err = c.Watch(&source.Kind{Type: &skynetv1alpha1.ESSinkConnector{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -260,7 +263,31 @@ func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
 }
 
 func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.Result, error) {
-	log.Info("Calling ManageSuccess")
+	log.Info("Executing ManageSuccess")
+
+	runtimeObj, ok := (obj).(runtime.Object)
+	if !ok {
+		log.Error(errors.New("not a runtime.Object"), "passed object was not a runtime.Object", "object", obj)
+		return reconcile.Result{}, nil
+	}
+	if connector, updateStatus := obj.(*skynetv1alpha1.ESSinkConnector); updateStatus {
+		status := v1alpha1.ESSinkConnectorStatus{
+			ConnectorName: connector.Spec.Config.Name,
+			Topics:        connector.Spec.Config.Topics,
+			Tasks:         0,
+		}
+		connector.SetESSinkConnectorStatus(status)
+		err := r.GetClient().Status().Update(context.Background(), runtimeObj)
+		if err != nil {
+			log.Error(err, "unable to update status")
+			return reconcile.Result{
+				RequeueAfter: time.Second,
+				Requeue:      true,
+			}, nil
+		}
+	} else {
+		log.Info("object is not RecocileStatusAware, not setting status")
+	}
 	return reconcile.Result{}, nil
 }
 
