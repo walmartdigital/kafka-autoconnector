@@ -129,6 +129,14 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
+		fakeK8sClient.EXPECT().Status().Return(
+			fakeK8sClient,
+		).Times(1)
+
+		fakeK8sClient.EXPECT().Update(context.Background(), gomock.Any()).Return(
+			nil,
+		).Times(1)
+
 		req := reconcile.Request{
 			NamespacedName: name,
 		}
@@ -196,6 +204,14 @@ var _ = Describe("Run Reconcile", func() {
 
 		fakeKafkaConnectClient.EXPECT().Update(conObj).Return(
 			&resp1,
+			nil,
+		).Times(1)
+
+		fakeK8sClient.EXPECT().Status().Return(
+			fakeK8sClient,
+		).Times(1)
+
+		fakeK8sClient.EXPECT().Update(context.Background(), gomock.Any()).Return(
 			nil,
 		).Times(1)
 
