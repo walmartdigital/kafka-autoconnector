@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/chinniehendrix/go-kaya/pkg/client"
@@ -193,26 +194,30 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 		Config: &connector.Spec.Config,
 	}
 
-	response, _ := kcc.Read(config.Name)
+	response, readErr := kcc.Read(config.Name)
+
+	if readErr != nil {
+		return readErr
+	}
 
 	if response.Result == "success" {
 		log.Info(fmt.Sprintf("Connector %s already exists, updating configuration", config.Name))
 
 		if !cmp.Equal(connector.Spec.Config, response.Config, opt) {
-			resp, err2 := kcc.Update(conObj)
+			resp, updateErr := kcc.Update(conObj)
 			if resp.Result == "success" {
 				return nil
 			} else {
-				return err2
+				return updateErr
 			}
 		}
 	} else {
 		log.Info(fmt.Sprintf("Failed to get connector %s", config.Name))
-		resp3, err3 := kcc.Create(conObj)
+		resp3, createErr := kcc.Create(conObj)
 		if resp3.Result == "success" {
 			return nil
 		} else {
-			return err3
+			return createErr
 		}
 	}
 	return nil
@@ -274,9 +279,11 @@ func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.R
 		status := v1alpha1.ESSinkConnectorStatus{
 			ConnectorName: connector.Spec.Config.Name,
 			Topics:        connector.Spec.Config.Topics,
+			Status:        "Running",
+			LastUpdate:    metav1.Now(),
 			Tasks:         0,
 		}
-		connector.SetESSinkConnectorStatus(status)
+		connector.SetStatus(status)
 		err := r.GetClient().Status().Update(context.Background(), runtimeObj)
 		if err != nil {
 			log.Error(err, "unable to update status")
@@ -320,7 +327,62 @@ func (r *ReconcileESSinkConnector) ManageCleanUpLogic(obj metav1.Object, kcc kaf
 	}
 }
 
-func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, err error) (reconcile.Result, error) {
+func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, issue error) (reconcile.Result, error) {
 	log.Info("Calling ManageError")
-	return reconcile.Result{}, nil
+
+	//TODO: What is an error condition in the case of an ESSinkConnector?
+	// A number of active tasks that is less than a certain threshold relative to the max number of tasks
+	// A connector that is not running (get from status endpoint)
+	// Can we get any other information from the tasks endpoint to detect any deviations from the desired state?
+
+	runtimeObj, ok := (obj).(runtime.Object)
+
+	if !ok {
+		log.Error(errors.New("not a runtime.Object"), "passed object was not a runtime.Object", "object", obj)
+		return reconcile.Result{}, nil
+	}
+
+	var retryInterval time.Duration
+
+	r.GetRecorder().Event(runtimeObj, "Warning", "ProcessingError", issue.Error())
+
+	if connector, updateStatus := obj.(*skynetv1alpha1.ESSinkConnector); updateStatus {
+		lastUpdate := connector.GetStatus().LastUpdate.Time
+		lastStatus := connector.GetStatus().Status
+
+		status := v1alpha1.ESSinkConnectorStatus{
+			ConnectorName: connector.Spec.Config.Name,
+			Topics:        connector.Spec.Config.Topics,
+			Tasks:         0,
+			LastUpdate:    metav1.Now(),
+			Reason:        issue.Error(),
+			Status:        "Failure",
+		}
+
+		connector.SetStatus(status)
+
+		err := r.GetClient().Status().Update(context.Background(), runtimeObj)
+
+		if err != nil {
+			log.Error(err, "unable to update status")
+			return reconcile.Result{
+				RequeueAfter: time.Second,
+				Requeue:      true,
+			}, nil
+		}
+
+		if lastUpdate.IsZero() || lastStatus == "Success" {
+			retryInterval = time.Second
+		} else {
+			retryInterval = status.LastUpdate.Sub(lastUpdate).Round(time.Second)
+		}
+	} else {
+		log.Info("object is not RecocileStatusAware, not setting status")
+		retryInterval = time.Second
+	}
+
+	return reconcile.Result{
+		RequeueAfter: time.Duration(math.Min(float64(retryInterval.Nanoseconds()*2), float64(time.Hour.Nanoseconds()*6))),
+		Requeue:      true,
+	}, nil
 }
