@@ -2,6 +2,7 @@ package essinkconnector_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -301,6 +302,60 @@ var _ = Describe("Run Reconcile", func() {
 		).Times(1).SetArg(2, *conn)
 
 		fakeEventRecorder.EXPECT().Event(conn, "Warning", "ProcessingError", gomock.Any()).Return().Times(1)
+
+		fakeK8sClient.EXPECT().Status().Return(
+			fakeK8sClient,
+		).Times(1)
+
+		fakeK8sClient.EXPECT().Update(context.Background(), gomock.Any()).Return(
+			nil,
+		).Times(1)
+
+		req := reconcile.Request{
+			NamespacedName: name,
+		}
+		_, _ = r.Reconcile(req)
+	})
+
+	It("should fail because of a KafkaConnect client error when calling the kafkaconnect.Create function", func() {
+		name := types.NamespacedName{
+			Namespace: "default",
+			Name:      "blah",
+		}
+
+		resp := kafkaconnect.Response{
+			Result: "error",
+		}
+
+		fakeK8sClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
+			nil,
+		).Times(1).SetArg(2, *essink)
+
+		fakeKafkaConnectClientFactory.EXPECT().Create("192.168.64.5:30256", gomock.Any()).Return(
+			fakeKafkaConnectClient,
+			nil,
+		).Times(1)
+
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+			&resp,
+			nil,
+		).Times(1)
+
+		conObj := kafkaconnect.Connector{
+			Name:   essink.Spec.Config.Name,
+			Config: &essink.Spec.Config,
+		}
+
+		resp1 := kafkaconnect.Response{
+			Result: "error",
+		}
+
+		fakeKafkaConnectClient.EXPECT().Create(conObj).Return(
+			&resp1,
+			errors.New("Cannot connect to Kafka Connect instance"),
+		).Times(1)
+
+		fakeEventRecorder.EXPECT().Event(essink, "Warning", "ProcessingError", gomock.Any()).Return().Times(1)
 
 		fakeK8sClient.EXPECT().Status().Return(
 			fakeK8sClient,
