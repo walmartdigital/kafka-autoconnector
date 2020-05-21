@@ -300,6 +300,16 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1).SetArg(2, *conn)
 
+		fakeEventRecorder.EXPECT().Event(conn, "Warning", "ProcessingError", gomock.Any()).Return().Times(1)
+
+		fakeK8sClient.EXPECT().Status().Return(
+			fakeK8sClient,
+		).Times(1)
+
+		fakeK8sClient.EXPECT().Update(context.Background(), gomock.Any()).Return(
+			nil,
+		).Times(1)
+
 		req := reconcile.Request{
 			NamespacedName: name,
 		}
