@@ -64,7 +64,6 @@ spec:
               - connection.url
               - connector.class
               - key.ignore
-              - schema.ignore
               - topic.index.map
               - topics
               - type.name
@@ -75,18 +74,26 @@ spec:
         status:
           description: ESSinkConnectorStatus defines the observed state of ESSinkConnector
           properties:
-            name:
+            connector.name:
               description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                 of cluster Important: Run "operator-sdk generate k8s" to regenerate
                 code after modifying this file Add custom validation using kubebuilder
                 tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              type: string
+            last.update:
+              format: date-time
+              nullable: true
+              type: string
+            reason:
+              type: string
+            status:
               type: string
             tasks:
               type: integer
             topics:
               type: string
           required:
-          - name
+          - connector.name
           - tasks
           - topics
           type: object

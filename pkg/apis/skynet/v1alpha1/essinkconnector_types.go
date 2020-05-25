@@ -18,12 +18,13 @@ type ESSinkConnectorStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	ConnectorName string      `json:"connector.name"`
-	Topics        string      `json:"topics"`
-	Tasks         int         `json:"tasks"`
-	LastUpdate    metav1.Time `json:"last.update"`
-	Status        string      `json:"status"`
-	Reason        string      `json:"reason"`
+	ConnectorName string `json:"connector.name"`
+	Topics        string `json:"topics"`
+	Tasks         int    `json:"tasks"`
+	// +nullable
+	LastUpdate metav1.Time `json:"last.update,omitempty"`
+	Status     string      `json:"status,omitempty"`
+	Reason     string      `json:"reason,omitempty"`
 }
 
 func (e ESSinkConnector) SetStatus(status ESSinkConnectorStatus) {
