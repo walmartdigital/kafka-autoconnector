@@ -130,6 +130,8 @@ github.com/chinniehendrix/go-kaya v0.0.0-20200507192726-9ccf91747df5 h1:3cjFta86
 github.com/chinniehendrix/go-kaya v0.0.0-20200507192726-9ccf91747df5/go.mod h1:hGm44L7K6arz6CtstwvRzK0N555NF1Gn8MDAV92X8u8=
 github.com/chinniehendrix/go-kaya v0.0.0-20200508230955-217336014d1e h1:xs4UUkAjP4yy8ITFAxYgBioTIwOWCnR/hipGOWmhfzY=
 github.com/chinniehendrix/go-kaya v0.0.0-20200508230955-217336014d1e/go.mod h1:hGm44L7K6arz6CtstwvRzK0N555NF1Gn8MDAV92X8u8=
+github.com/chinniehendrix/go-kaya v0.0.0-20200525193621-604ebe2a0d38 h1:8htZj7IIOct9xtgWIVhPabjdi1e4JqbyV9zFGAWArGY=
+github.com/chinniehendrix/go-kaya v0.0.0-20200525193621-604ebe2a0d38/go.mod h1:PqwXBrLm+iILWDPbZpBPU4YUSzVYIQ9fIF0qfw3nU5Y=
 github.com/circonus-labs/circonus-gometrics v2.3.1+incompatible/go.mod h1:nmEj6Dob7S7YxXgwXpfOuvO54S+tGdZdw9fuRZt25Ag=
 github.com/circonus-labs/circonusllhist v0.1.3/go.mod h1:kMXHVDlOchFAehlya5ePtbp5jckzBHf4XRpQvBOLI+I=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
