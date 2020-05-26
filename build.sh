@@ -3,7 +3,14 @@ set -e
 
 eval $(minikube docker-env)
 temp=$(uuidgen | shasum | grep -oh '^\S*')
-commitHash="$(git rev-parse --short HEAD)-dirty"
+
+dirty=$(git status --porcelain)
+if [ "$dirty" == "" ]
+then
+    commitHash="$(git rev-parse --short HEAD)"
+else
+    commitHash="$(git rev-parse --short HEAD)-dirty"
+fi
 
 operator-sdk build kafka-autoconnector:$temp
 imageid=$(docker images kafka-autoconnector:$temp -q)
