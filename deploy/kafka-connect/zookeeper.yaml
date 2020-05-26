@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  labels:
+    app: zookeeper
+spec:
+  ports:
+    - port: 2181
+      name: client
+  selector:
+    app: zookeeper
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+  serviceName: zookeeper
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - name: zookeeper
+          imagePullPolicy: IfNotPresent
+          image: zookeeper:3.4
+          command:
+            - sh
+            - -exc
+            - |
+              export ORDINAL=${HOSTNAME##*-} && \
+              export ZOO_MY_ID="$((${ORDINAL:-0} + 1))" && \
+              exec /docker-entrypoint.sh zkServer.sh start-foreground
+          ports:
+            - containerPort: 2181
+              name: client
+          env:
+            - name: ZOO_AUTOPURGE_PURGEINTERVAL
+              value: '1'
+          volumeMounts:
+            - name: datadir
+              mountPath: /var/lib/zookeeper
+  volumeClaimTemplates:
+    - metadata:
+        name: datadir
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 200Mi

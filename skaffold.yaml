@@ -1,0 +1,25 @@
+apiVersion: skaffold/v2beta1
+kind: Config
+metadata:
+  name: kafka-autoconnector
+build:
+  local: {}
+  artifacts:
+  - image: kafka-autoconnector
+    custom:
+      buildCommand: ./build.sh
+      dependencies:
+        paths:
+        - .
+    
+deploy:
+  kubectl:
+    manifests:
+    - deploy/kafka-connect/zookeeper.yaml
+    - deploy/kafka-connect/kafka.yaml
+    - deploy/kafka-connect/kafka-connect.yaml
+    - deploy/rbac/role_binding.yaml
+    - deploy/rbac/role.yaml
+    - deploy/rbac/service_account.yaml
+    - deploy/crds/skynet.walmartdigital.cl_essinkconnectors_crd.yaml
+    - deploy/operator.yaml

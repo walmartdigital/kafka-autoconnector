@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka-connect
+spec:
+  selector:
+    matchLabels:
+      app: kafka-connect
+  serviceName: 'kafka-connect'
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: kafka-connect
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: kafka-connect
+          image: confluentinc/cp-kafka-connect:5.3.2
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CONNECT_BOOTSTRAP_SERVERS
+              value: 'kafka-0.kafka:9092,kafka-1.kafka:9092,kafka-2.kafka:9092'
+            - name: CONNECT_REST_PORT
+              value: '8083'
+            - name: CONNECT_GROUP_ID
+              value: 'kafka-connect'
+            - name: CONNECT_CONFIG_STORAGE_TOPIC
+              value: 'kafka-connect-config'
+            - name: CONNECT_OFFSET_STORAGE_TOPIC
+              value: 'kafka-connect-offsets'
+            - name: CONNECT_STATUS_STORAGE_TOPIC
+              value: 'kafka-connect-status'
+            - name: CONNECT_KEY_CONVERTER
+              value: 'org.apache.kafka.connect.json.JsonConverter'
+            - name: CONNECT_VALUE_CONVERTER
+              value: 'org.apache.kafka.connect.json.JsonConverter'
+            - name: CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE
+              value: 'false'
+            - name: CONNECT_INTERNAL_KEY_CONVERTER
+              value: 'org.apache.kafka.connect.json.JsonConverter'
+            - name: CONNECT_INTERNAL_VALUE_CONVERTER
+              value: 'org.apache.kafka.connect.json.JsonConverter'
+            - name: CONNECT_REST_ADVERTISED_HOST_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: CONNECT_LOG4J_LOGGERS
+              value: 'org.reflections=DEBUG'
+            - name: CONNECT_PLUGIN_PATH
+              value: '/usr/share/java'
+          ports:
+            - containerPort: 8083
+          volumeMounts:
+            - name: connect
+              mountPath: /kafka/connect
+  volumeClaimTemplates:
+    - metadata:
+        name: connect
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 200Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-connect
+  labels:
+    app: kafka-connect
+spec:
+  ports:
+    - port: 8083
+  selector:
+    app: kafka-connect
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-connect-ext
+  labels:
+    app: kafka-connect
+spec:
+  type: NodePort
+  ports:
+    - port: 8083
+  selector:
+    app: kafka-connect
