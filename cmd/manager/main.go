@@ -18,8 +18,6 @@ import (
 	"github.com/walmartdigital/kafka-autoconnector/pkg/controller"
 	"github.com/walmartdigital/kafka-autoconnector/version"
 
-	"github.com/chinniehendrix/go-kaya/pkg/client"
-	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -27,6 +25,8 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"github.com/spf13/pflag"
+	"github.com/walmartdigital/go-kaya/pkg/client"
+	"github.com/walmartdigital/go-kaya/pkg/kafkaconnect"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"

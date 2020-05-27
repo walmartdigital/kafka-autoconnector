@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/redhat-cop/operator-utils/pkg/util"
+	"github.com/walmartdigital/go-kaya/pkg/kafkaconnect"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/controller/essinkconnector"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/mocks"

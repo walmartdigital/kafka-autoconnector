@@ -5,9 +5,9 @@
 package mocks
 
 import (
-	client "github.com/chinniehendrix/go-kaya/pkg/client"
-	kafkaconnect "github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
 	gomock "github.com/golang/mock/gomock"
+	client "github.com/walmartdigital/go-kaya/pkg/client"
+	kafkaconnect "github.com/walmartdigital/go-kaya/pkg/kafkaconnect"
 	reflect "reflect"
 )
 

@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
+	"github.com/walmartdigital/go-kaya/pkg/kafkaconnect"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 

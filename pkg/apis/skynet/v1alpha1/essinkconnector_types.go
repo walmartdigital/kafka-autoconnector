@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
+	"github.com/walmartdigital/go-kaya/pkg/kafkaconnect"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

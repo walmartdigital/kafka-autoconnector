@@ -7,11 +7,11 @@ import (
 	"math"
 	"time"
 
-	"github.com/chinniehendrix/go-kaya/pkg/client"
-	"github.com/chinniehendrix/go-kaya/pkg/kafkaconnect"
-	"github.com/chinniehendrix/go-kaya/pkg/validator"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhat-cop/operator-utils/pkg/util"
+	"github.com/walmartdigital/go-kaya/pkg/client"
+	"github.com/walmartdigital/go-kaya/pkg/kafkaconnect"
+	"github.com/walmartdigital/go-kaya/pkg/validator"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/utils"
@@ -203,7 +203,7 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 	if response.Result == "success" {
 		log.Info(fmt.Sprintf("Connector %s already exists, updating configuration", config.Name))
 
-		if !cmp.Equal(connector.Spec.Config, response.Config, opt) {
+		if !cmp.Equal(connector.Spec.Config, response.Payload, opt) {
 			resp, updateErr := kcc.Update(conObj)
 			if resp.Result == "success" {
 				return nil
