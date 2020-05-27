@@ -174,8 +174,8 @@ var _ = Describe("Run Reconcile", func() {
 		}
 
 		resp := kafkaconnect.Response{
-			Result: "success",
-			Config: &essink.Spec.Config,
+			Result:  "success",
+			Payload: &essink.Spec.Config,
 		}
 
 		controllerutil.AddFinalizer(newConnector, controllerName)

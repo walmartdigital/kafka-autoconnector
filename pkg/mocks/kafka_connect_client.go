@@ -94,6 +94,21 @@ func (mr *MockKafkaConnectClientMockRecorder) Delete(connector interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockKafkaConnectClient)(nil).Delete), connector)
 }
 
+// Status mocks base method
+func (m *MockKafkaConnectClient) Status(connector string) (*kafkaconnect.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Status", connector)
+	ret0, _ := ret[0].(*kafkaconnect.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Status indicates an expected call of Status
+func (mr *MockKafkaConnectClientMockRecorder) Status(connector interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Status", reflect.TypeOf((*MockKafkaConnectClient)(nil).Status), connector)
+}
+
 // MockKafkaConnectClientFactory is a mock of KafkaConnectClientFactory interface
 type MockKafkaConnectClientFactory struct {
 	ctrl     *gomock.Controller
