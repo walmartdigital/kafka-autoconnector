@@ -41,6 +41,7 @@ var _ = Describe("Run Reconcile", func() {
 		essink                        *skynetv1alpha1.ESSinkConnector
 		fakeEventRecorder             *mocks.MockEventRecorder
 		fakeK8sClient                 *mocks.MockClient
+		fakeCache                     *mocks.MockCache
 		fakeKafkaConnectClient        *mocks.MockKafkaConnectClient
 		fakeKafkaConnectClientFactory *mocks.MockKafkaConnectClientFactory
 		r                             *essinkconnector.ReconcileESSinkConnector
@@ -51,6 +52,7 @@ var _ = Describe("Run Reconcile", func() {
 		fakeK8sClient = mocks.NewMockClient(ctrl)
 		fakeKafkaConnectClient = mocks.NewMockKafkaConnectClient(ctrl)
 		fakeKafkaConnectClientFactory = mocks.NewMockKafkaConnectClientFactory(ctrl)
+		fakeCache = mocks.NewMockCache(ctrl)
 
 		config := kafkaconnect.ConnectorConfig{
 			Name:                         "amida.logging",
@@ -88,8 +90,9 @@ var _ = Describe("Run Reconcile", func() {
 				fakeEventRecorder,
 			),
 			KafkaConnectClientFactory: fakeKafkaConnectClientFactory,
+			Cache:                     fakeCache,
 		}
-		_ = fakeKafkaConnectClient
+		// _ = fakeKafkaConnectClient
 	})
 
 	It("should create a new KafkaConnect connector", func() {

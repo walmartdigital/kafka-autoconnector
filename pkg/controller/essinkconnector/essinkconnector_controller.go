@@ -76,7 +76,7 @@ func newReconciler(mgr manager.Manager, c cache.Cache, kcf kafkaconnect.KafkaCon
 	return &ReconcileESSinkConnector{
 		ReconcilerBase:            util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
 		KafkaConnectClientFactory: kcf,
-		cache:                     c,
+		Cache:                     c,
 	}
 }
 
@@ -107,7 +107,7 @@ type ReconcileESSinkConnector struct {
 	// that reads objects from the cache and writes to the apiserver
 	util.ReconcilerBase
 	kafkaconnect.KafkaConnectClientFactory
-	cache cache.Cache
+	cache.Cache
 }
 
 // Reconcile reads that state of the cluster for a ESSinkConnector object and makes changes based on the state read
@@ -203,15 +203,15 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 
 		if response.Result == "success" {
 			log.Info(fmt.Sprintf("Failed connector %s is being restarted", connector.Spec.Config.Name))
-			value, ok := r.cache.Load(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name))
+			value, ok := r.Cache.Load(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name))
 
 			if ok {
 				connectorRestartCount = value.(int)
 				connectorRestartCount++
-				r.cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), connectorRestartCount)
+				r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), connectorRestartCount)
 			} else {
 				connectorRestartCount = 1
-				r.cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), connectorRestartCount)
+				r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), connectorRestartCount)
 			}
 			log.Info(fmt.Sprintf("Restart count for connector %s is now %d", connector.Spec.Config.Name, connectorRestartCount))
 			return false, nil
@@ -235,22 +235,22 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 
 				if response.Result == "success" {
 					log.Info(fmt.Sprintf("Failed task %d for connector %s is being restarted", i, connector.Spec.Config.Name))
-					value, ok := r.cache.Load(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i))
+					value, ok := r.Cache.Load(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i))
 
 					if ok {
 						taskRestartCount = value.(int)
 						taskRestartCount++
-						r.cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), taskRestartCount)
+						r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), taskRestartCount)
 					} else {
 						taskRestartCount = 1
-						r.cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), taskRestartCount)
+						r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), taskRestartCount)
 					}
 					log.Info(fmt.Sprintf("Restart count for task %d of connector %s is now %d", i, connector.Spec.Config.Name, taskRestartCount))
 				} else {
 					return false, fmt.Errorf("Error occurred restarting connector %s", connector.Spec.Config.Name)
 				}
 			} else {
-				r.cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), 0)
+				r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), 0)
 			}
 		}
 		return healthy, nil
