@@ -3,7 +3,6 @@ module github.com/walmartdigital/kafka-autoconnector
 go 1.13
 
 require (
-	github.com/chinniehendrix/go-kaya v0.0.0-20200525193621-604ebe2a0d38
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/golang/mock v1.4.3
 	github.com/google/go-cmp v0.4.0
@@ -14,7 +13,7 @@ require (
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/redhat-cop/operator-utils v0.2.4
 	github.com/spf13/pflag v1.0.5
-	github.com/walmartdigital/go-kaya v0.0.4
+	github.com/walmartdigital/go-kaya v0.0.0-20200530205954-374d93202fa0
 	gopkg.in/go-playground/validator.v9 v9.31.0 // indirect
 	k8s.io/api v0.17.4
 	k8s.io/apimachinery v0.17.4

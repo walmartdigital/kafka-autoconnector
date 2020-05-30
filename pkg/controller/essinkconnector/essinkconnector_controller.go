@@ -14,6 +14,7 @@ import (
 	"github.com/walmartdigital/go-kaya/pkg/validator"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
+	"github.com/walmartdigital/kafka-autoconnector/pkg/cache"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,13 +28,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var controllerName = "controller_essinkconnector"
-var log = logf.Log.WithName(controllerName)
-var kafkaConnectHost = "192.168.64.5:30256"
-
-var opt cmp.Option
+var (
+	controllerName            = "controller_essinkconnector"
+	log                       = logf.Log.WithName(controllerName)
+	kafkaConnectHost          = "192.168.64.5:30256"
+	connectorRestartCachePath = "/essinkconnector/connectors/%s/restart"
+	taskRestartCachePath      = "/essinkconnector/connectors/%s/tasks/%d/restart"
+	opt                       cmp.Option
+)
 
 func init() {
+	// This should probably be moved to the go-kaya repo for domain/cohesion purposes
 	opt = cmp.Comparer(func(a, b kafkaconnect.ConnectorConfig) bool {
 		if a == (kafkaconnect.ConnectorConfig{}) && b == (kafkaconnect.ConnectorConfig{}) {
 			return true
@@ -62,15 +67,16 @@ func init() {
 
 // Add creates a new ESSinkConnector Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, factory kafkaconnect.KafkaConnectClientFactory) error {
-	return add(mgr, newReconciler(mgr, factory))
+func Add(mgr manager.Manager, c cache.Cache, kcf kafkaconnect.KafkaConnectClientFactory) error {
+	return add(mgr, newReconciler(mgr, c, kcf))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, factory kafkaconnect.KafkaConnectClientFactory) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, c cache.Cache, kcf kafkaconnect.KafkaConnectClientFactory) reconcile.Reconciler {
 	return &ReconcileESSinkConnector{
 		ReconcilerBase:            util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
-		KafkaConnectClientFactory: factory,
+		KafkaConnectClientFactory: kcf,
+		cache:                     c,
 	}
 }
 
@@ -101,6 +107,7 @@ type ReconcileESSinkConnector struct {
 	// that reads objects from the cache and writes to the apiserver
 	util.ReconcilerBase
 	kafkaconnect.KafkaConnectClientFactory
+	cache cache.Cache
 }
 
 // Reconcile reads that state of the cluster for a ESSinkConnector object and makes changes based on the state read
@@ -175,6 +182,81 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 	return r.ManageSuccess(instance)
 }
 
+func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alpha1.ESSinkConnector, kcc kafkaconnect.KafkaConnectClient) (bool, error) {
+	var connectorRestartCount, taskRestartCount int
+	var healthy bool
+
+	response, readErr := kcc.GetStatus(connector.Spec.Config.Name)
+
+	if readErr != nil {
+		return false, readErr
+	}
+
+	status := response.Payload.(kafkaconnect.Status)
+
+	if status.IsConnectorFailed() {
+		response, error := kcc.RestartConnector(connector.Spec.Config.Name)
+
+		if error != nil {
+			return false, error
+		}
+
+		if response.Result == "success" {
+			log.Info(fmt.Sprintf("Failed connector %s is being restarted", connector.Spec.Config.Name))
+			value, ok := r.cache.Load(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name))
+
+			if ok {
+				connectorRestartCount = value.(int)
+				connectorRestartCount++
+				r.cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), connectorRestartCount)
+			} else {
+				connectorRestartCount = 1
+				r.cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), connectorRestartCount)
+			}
+			log.Info(fmt.Sprintf("Restart count for connector %s is now %d", connector.Spec.Config.Name, connectorRestartCount))
+			return false, nil
+		} else {
+			return false, fmt.Errorf("Error occurred restarting connector %s", connector.Spec.Config.Name)
+		}
+	} else {
+		healthy = true
+		for i := 0; i < status.GetTaskCount(); i++ {
+			failed, err := status.IsTaskFailed(i)
+			if err != nil {
+				return false, err
+			}
+			if failed {
+				healthy = false
+				response, error := kcc.RestartTask(connector.Spec.Config.Name, i)
+
+				if error != nil {
+					return false, error
+				}
+
+				if response.Result == "success" {
+					log.Info(fmt.Sprintf("Failed task %d for connector %s is being restarted", i, connector.Spec.Config.Name))
+					value, ok := r.cache.Load(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i))
+
+					if ok {
+						taskRestartCount = value.(int)
+						taskRestartCount++
+						r.cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), taskRestartCount)
+					} else {
+						taskRestartCount = 1
+						r.cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), taskRestartCount)
+					}
+					log.Info(fmt.Sprintf("Restart count for task %d of connector %s is now %d", i, connector.Spec.Config.Name, taskRestartCount))
+				} else {
+					return false, fmt.Errorf("Error occurred restarting connector %s", connector.Spec.Config.Name)
+				}
+			} else {
+				r.cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), 0)
+			}
+		}
+		return healthy, nil
+	}
+}
+
 func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc kafkaconnect.KafkaConnectClient) error {
 	log.Info("Calling ManageOperatorLogic")
 	connector, ok := obj.(*skynetv1alpha1.ESSinkConnector)
@@ -209,6 +291,16 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 				return nil
 			} else {
 				return updateErr
+			}
+		} else {
+			healthy, err := r.CheckAndHealConnector(connector, kcc)
+			if err != nil {
+				return err
+			}
+			if healthy {
+				log.Info(fmt.Sprintf("Connector %s is healthy", config.Name))
+			} else {
+				log.Info(fmt.Sprintf("Connector %s is unhealthy, self-healing in progress", config.Name))
 			}
 		}
 	} else {

@@ -34,6 +34,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+
+	controller_cache "github.com/walmartdigital/kafka-autoconnector/pkg/cache"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -41,6 +43,7 @@ var (
 	metricsHost               = "0.0.0.0"
 	metricsPort         int32 = 8383
 	operatorMetricsPort int32 = 8686
+	controllerCache     *controller_cache.InMemoryCache
 )
 var log = logf.Log.WithName("cmd")
 
@@ -125,6 +128,8 @@ func main() {
 		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
 	}
 
+	controllerCache = controller_cache.NewInMemoryCache()
+
 	// Create a new manager to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
@@ -141,7 +146,7 @@ func main() {
 	}
 
 	// Setup all Controllers
-	if err := controller.AddToManager(mgr, KCClientFactory{}); err != nil {
+	if err := controller.AddToManager(mgr, controllerCache, KCClientFactory{}); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
