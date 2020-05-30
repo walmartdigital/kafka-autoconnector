@@ -94,19 +94,49 @@ func (mr *MockKafkaConnectClientMockRecorder) Delete(connector interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockKafkaConnectClient)(nil).Delete), connector)
 }
 
-// Status mocks base method
-func (m *MockKafkaConnectClient) Status(connector string) (*kafkaconnect.Response, error) {
+// GetStatus mocks base method
+func (m *MockKafkaConnectClient) GetStatus(connector string) (*kafkaconnect.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Status", connector)
+	ret := m.ctrl.Call(m, "GetStatus", connector)
 	ret0, _ := ret[0].(*kafkaconnect.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Status indicates an expected call of Status
-func (mr *MockKafkaConnectClientMockRecorder) Status(connector interface{}) *gomock.Call {
+// GetStatus indicates an expected call of GetStatus
+func (mr *MockKafkaConnectClientMockRecorder) GetStatus(connector interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Status", reflect.TypeOf((*MockKafkaConnectClient)(nil).Status), connector)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStatus", reflect.TypeOf((*MockKafkaConnectClient)(nil).GetStatus), connector)
+}
+
+// RestartTask mocks base method
+func (m *MockKafkaConnectClient) RestartTask(connector string, taskID int) (*kafkaconnect.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RestartTask", connector, taskID)
+	ret0, _ := ret[0].(*kafkaconnect.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RestartTask indicates an expected call of RestartTask
+func (mr *MockKafkaConnectClientMockRecorder) RestartTask(connector, taskID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RestartTask", reflect.TypeOf((*MockKafkaConnectClient)(nil).RestartTask), connector, taskID)
+}
+
+// RestartConnector mocks base method
+func (m *MockKafkaConnectClient) RestartConnector(connector string) (*kafkaconnect.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RestartConnector", connector)
+	ret0, _ := ret[0].(*kafkaconnect.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RestartConnector indicates an expected call of RestartConnector
+func (mr *MockKafkaConnectClientMockRecorder) RestartConnector(connector interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RestartConnector", reflect.TypeOf((*MockKafkaConnectClient)(nil).RestartConnector), connector)
 }
 
 // MockKafkaConnectClientFactory is a mock of KafkaConnectClientFactory interface
