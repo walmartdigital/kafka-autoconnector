@@ -92,7 +92,6 @@ var _ = Describe("Run Reconcile", func() {
 			KafkaConnectClientFactory: fakeKafkaConnectClientFactory,
 			Cache:                     fakeCache,
 		}
-		// _ = fakeKafkaConnectClient
 	})
 
 	It("should create a new KafkaConnect connector", func() {
@@ -178,7 +177,7 @@ var _ = Describe("Run Reconcile", func() {
 
 		resp := kafkaconnect.Response{
 			Result:  "success",
-			Payload: &essink.Spec.Config,
+			Payload: essink.Spec.Config,
 		}
 
 		controllerutil.AddFinalizer(newConnector, controllerName)
@@ -210,6 +209,91 @@ var _ = Describe("Run Reconcile", func() {
 			&resp1,
 			nil,
 		).Times(1)
+
+		fakeK8sClient.EXPECT().Status().Return(
+			fakeK8sClient,
+		).Times(1)
+
+		fakeK8sClient.EXPECT().Update(context.Background(), gomock.Any()).Return(
+			nil,
+		).Times(1)
+
+		req := reconcile.Request{
+			NamespacedName: name,
+		}
+		_, _ = r.Reconcile(req)
+	})
+
+	It("should restart a failed KafkaConnect connector and log the event in the cache", func() {
+		name := types.NamespacedName{
+			Namespace: "default",
+			Name:      "blah",
+		}
+
+		task0 := kafkaconnect.Task{
+			ID:       0,
+			State:    "FAILED",
+			WorkerID: "somenode:23444",
+		}
+
+		task1 := kafkaconnect.Task{
+			ID:       1,
+			State:    "FAILED",
+			WorkerID: "somenode:23444",
+		}
+
+		status := kafkaconnect.Status{
+			Name: "blah",
+			Connector: kafkaconnect.ConnectorStatus{
+				State:    "FAILED",
+				WorkerID: "somenode:23444",
+			},
+			Tasks: []kafkaconnect.Task{
+				task0,
+				task1,
+			},
+		}
+
+		statusResp := kafkaconnect.Response{
+			Result:  "success",
+			Payload: status,
+		}
+
+		resp := kafkaconnect.Response{
+			Result:  "success",
+			Payload: essink.Spec.Config,
+		}
+
+		fakeK8sClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
+			nil,
+		).Times(1).SetArg(2, *essink)
+
+		fakeKafkaConnectClientFactory.EXPECT().Create("192.168.64.5:30256", gomock.Any()).Return(
+			fakeKafkaConnectClient,
+			nil,
+		).Times(1)
+
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+			&resp,
+			nil,
+		).Times(1)
+
+		fakeKafkaConnectClient.EXPECT().GetStatus(essink.Spec.Config.Name).Return(
+			&statusResp,
+			nil,
+		).Times(1)
+
+		fakeKafkaConnectClient.EXPECT().RestartConnector(essink.Spec.Config.Name).Return(
+			&statusResp,
+			nil,
+		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/restart").Return(
+			nil,
+			false,
+		).Times(1)
+
+		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/restart", 1).Times(1)
 
 		fakeK8sClient.EXPECT().Status().Return(
 			fakeK8sClient,
