@@ -20,6 +20,8 @@ spec:
           command:
           - kafka-autoconnector
           env:
+            - name: KAFKA_CONNECT_ADDR
+              value: kafka-connect:8083
             - name: WATCH_NAMESPACE
               valueFrom:
                 fieldRef:

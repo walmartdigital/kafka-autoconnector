@@ -73,18 +73,6 @@ metadata:
   labels:
     app: kafka-connect
 spec:
-  ports:
-    - port: 8083
-  selector:
-    app: kafka-connect
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: kafka-connect-ext
-  labels:
-    app: kafka-connect
-spec:
   type: NodePort
   ports:
     - port: 8083

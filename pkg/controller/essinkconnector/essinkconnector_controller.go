@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -60,6 +61,11 @@ func init() {
 		}
 		return false
 	})
+
+	addr := os.Getenv("KAFKA_CONNECT_ADDR")
+	if addr != "" {
+		kafkaConnectHost = addr
+	}
 }
 
 /**
