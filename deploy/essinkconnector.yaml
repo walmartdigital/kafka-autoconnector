@@ -10,7 +10,7 @@ spec:
     topics: "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs"
     topic.index.map: "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>"
     batch.size: "200"
-    connection.url: "https://elasticsearch"
+    connection.url: "https://logs-elasticsearch-client:9200"
     key.ignore: "true"
     schema.ignore: "true"
     behavior.on.malformed.documents: "ignore"
