@@ -40,16 +40,6 @@ type ESSinkConnector struct {
 	Status ESSinkConnectorStatus `json:"status,omitempty"`
 }
 
-// SetStatus ...
-func (e ESSinkConnector) SetStatus(status ESSinkConnectorStatus) {
-	e.Status = status
-}
-
-// GetStatus ...
-func (e ESSinkConnector) GetStatus() ESSinkConnectorStatus {
-	return e.Status
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ESSinkConnectorList contains a list of ESSinkConnector
