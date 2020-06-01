@@ -20,7 +20,7 @@ type ESSinkConnectorStatus struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	ConnectorName string `json:"connector.name"`
 	Topics        string `json:"topics"`
-	Tasks         int    `json:"tasks"`
+	Tasks         string `json:"tasks"`
 	// +nullable
 	LastUpdate metav1.Time `json:"last.update,omitempty"`
 	Status     string      `json:"status,omitempty"`

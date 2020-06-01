@@ -89,7 +89,7 @@ spec:
             status:
               type: string
             tasks:
-              type: integer
+              type: string
             topics:
               type: string
           required:
