@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -30,14 +31,17 @@ import (
 )
 
 var (
-	controllerName             = "controller_essinkconnector"
-	log                        = logf.Log.WithName(controllerName)
-	kafkaConnectHost           = "192.168.64.5:30256"
-	connectorRestartCachePath  = "/essinkconnector/connectors/%s/restart"
-	taskRestartCachePath       = "/essinkconnector/connectors/%s/tasks/%d/restart"
-	totalTasksCountCachePath   = "/essinkconnector/connectors/%s/tasks/total/count"
-	runningTasksCountCachePath = "/essinkconnector/connectors/%s/tasks/running/count"
-	opt                        cmp.Option
+	controllerName                  = "controller_essinkconnector"
+	log                             = logf.Log.WithName(controllerName)
+	kafkaConnectHost                = "192.168.64.5:30256"
+	connectorRestartCachePath       = "/essinkconnector/connectors/%s/restart"
+	taskRestartCachePath            = "/essinkconnector/connectors/%s/tasks/%d/restart"
+	totalTasksCountCachePath        = "/essinkconnector/connectors/%s/tasks/total/count"
+	runningTasksCountCachePath      = "/essinkconnector/connectors/%s/tasks/running/count"
+	refreshFromKafkaConnectInterval = 5
+	connectorFailureThreshold       = 5
+	taskFailureThreshold            = 5
+	opt                             cmp.Option
 )
 
 func init() {
@@ -65,6 +69,30 @@ func init() {
 	addr := os.Getenv("KAFKA_CONNECT_ADDR")
 	if addr != "" {
 		kafkaConnectHost = addr
+	}
+
+	interval := os.Getenv("REFRESH_INTERVAL")
+	if interval != "" {
+		val, err := strconv.Atoi(interval)
+		if err == nil {
+			refreshFromKafkaConnectInterval = val
+		}
+	}
+
+	connectorThreshold := os.Getenv("CONNECTOR_FAILURE_THRESHOLD")
+	if connectorThreshold != "" {
+		val, err := strconv.Atoi(connectorThreshold)
+		if err == nil {
+			connectorFailureThreshold = val
+		}
+	}
+
+	taskThreshold := os.Getenv("TASK_FAILURE_THRESHOLD")
+	if taskThreshold != "" {
+		val, err := strconv.Atoi(taskThreshold)
+		if err == nil {
+			taskFailureThreshold = val
+		}
 	}
 }
 
@@ -98,7 +126,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to primary resource ESSinkConnector
 	err = c.Watch(&source.Kind{Type: &skynetv1alpha1.ESSinkConnector{}}, &handler.EnqueueRequestForObject{}, util.ResourceGenerationOrFinalizerChangedPredicate{})
-	// err = c.Watch(&source.Kind{Type: &skynetv1alpha1.ESSinkConnector{}}, &handler.EnqueueRequestForObject{})
+	//err = c.Watch(&source.Kind{Type: &skynetv1alpha1.ESSinkConnector{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -290,19 +318,16 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 	}
 
 	response, readErr := kcc.Read(config.Name)
-
-	if readErr != nil {
-		return readErr
-	}
+	log.Info(fmt.Sprintf("Reading connector %s from Kafka Connect", config.Name))
 
 	if response.Result == "success" {
-		log.Info(fmt.Sprintf("Connector %s already exists, updating configuration", config.Name))
-
 		if !cmp.Equal(connector.Spec.Config, response.Payload, opt) {
 			resp, updateErr := kcc.Update(conObj)
 			if resp.Result == "success" {
+				log.Info(fmt.Sprintf("Connector %s already exists, updating configuration", config.Name))
 				return nil
 			} else {
+				log.Error(updateErr, fmt.Sprintf("Error occurred updating configuration for connector %s", config.Name))
 				return updateErr
 			}
 		} else {
@@ -316,14 +341,17 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 				log.Info(fmt.Sprintf("Connector %s is unhealthy, self-healing in progress", config.Name))
 			}
 		}
-	} else {
+	} else if response.Result == "notfound" {
 		log.Info(fmt.Sprintf("Failed to get connector %s", config.Name))
 		resp3, createErr := kcc.Create(conObj)
+		log.Info(fmt.Sprintf("Creating new connector %s", config.Name))
 		if resp3.Result == "success" {
 			return nil
 		} else {
 			return createErr
 		}
+	} else if readErr != nil {
+		return readErr
 	}
 	return nil
 }
@@ -390,23 +418,18 @@ func (r *ReconcileESSinkConnector) getTasksInfoFromCache(name string) (int, int)
 func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.Result, error) {
 	log.Info("Executing ManageSuccess")
 
-	runtimeObj, ok := (obj).(runtime.Object)
-	if !ok {
-		log.Error(errors.New("not a runtime.Object"), "passed object was not a runtime.Object", "object", obj)
-		return reconcile.Result{}, nil
-	}
-
 	if connector, updateStatus := obj.(*skynetv1alpha1.ESSinkConnector); updateStatus {
 		total, running := r.getTasksInfoFromCache(connector.Spec.Config.Name)
-		status := v1alpha1.ESSinkConnectorStatus{
+
+		connector.Status = v1alpha1.ESSinkConnectorStatus{
 			ConnectorName: connector.Spec.Config.Name,
 			Topics:        connector.Spec.Config.Topics,
 			Status:        "Running",
 			LastUpdate:    metav1.Now(),
 			Tasks:         fmt.Sprintf("Running %d/%d", running, total),
 		}
-		connector.SetStatus(status)
-		err := r.GetClient().Status().Update(context.Background(), runtimeObj)
+
+		err := r.GetClient().Status().Update(context.Background(), connector)
 		if err != nil {
 			log.Error(err, "unable to update status")
 			return reconcile.Result{
@@ -415,9 +438,13 @@ func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.R
 			}, nil
 		}
 	} else {
-		log.Info("object is not RecocileStatusAware, not setting status")
+		log.Info("object is not ReconcileStatusAware, not setting status")
 	}
-	return reconcile.Result{}, nil
+
+	return reconcile.Result{
+		RequeueAfter: time.Duration(refreshFromKafkaConnectInterval) * time.Second,
+		Requeue:      true,
+	}, nil
 }
 
 func (r *ReconcileESSinkConnector) ManageCleanUpLogic(obj metav1.Object, kcc kafkaconnect.KafkaConnectClient) error {
@@ -471,10 +498,10 @@ func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, issue error) (
 	if connector, updateStatus := obj.(*skynetv1alpha1.ESSinkConnector); updateStatus {
 		total, running := r.getTasksInfoFromCache(connector.Spec.Config.Name)
 
-		lastUpdate := connector.GetStatus().LastUpdate.Time
-		lastStatus := connector.GetStatus().Status
+		lastUpdate := connector.Status.LastUpdate.Time
+		lastStatus := connector.Status.Status
 
-		status := v1alpha1.ESSinkConnectorStatus{
+		connector.Status = v1alpha1.ESSinkConnectorStatus{
 			ConnectorName: connector.Spec.Config.Name,
 			Topics:        connector.Spec.Config.Topics,
 			Tasks:         fmt.Sprintf("Running %d/%d", running, total),
@@ -483,9 +510,7 @@ func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, issue error) (
 			Status:        "Failure",
 		}
 
-		connector.SetStatus(status)
-
-		err := r.GetClient().Status().Update(context.Background(), runtimeObj)
+		err := r.GetClient().Status().Update(context.Background(), connector)
 
 		if err != nil {
 			log.Error(err, "unable to update status")
@@ -498,10 +523,10 @@ func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, issue error) (
 		if lastUpdate.IsZero() || lastStatus == "Success" {
 			retryInterval = time.Second
 		} else {
-			retryInterval = status.LastUpdate.Sub(lastUpdate).Round(time.Second)
+			retryInterval = connector.Status.LastUpdate.Sub(lastUpdate).Round(time.Second)
 		}
 	} else {
-		log.Info("object is not RecocileStatusAware, not setting status")
+		log.Info("object is not ReconcileStatusAware, not setting status")
 		retryInterval = time.Second
 	}
 
