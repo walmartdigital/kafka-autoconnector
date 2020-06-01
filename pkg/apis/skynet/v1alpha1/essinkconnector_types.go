@@ -27,14 +27,6 @@ type ESSinkConnectorStatus struct {
 	Reason     string      `json:"reason,omitempty"`
 }
 
-func (e ESSinkConnector) SetStatus(status ESSinkConnectorStatus) {
-	e.Status = status
-}
-
-func (e ESSinkConnector) GetStatus() ESSinkConnectorStatus {
-	return e.Status
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ESSinkConnector is the Schema for the essinkconnectors API
@@ -46,6 +38,16 @@ type ESSinkConnector struct {
 
 	Spec   ESSinkConnectorSpec   `json:"spec,omitempty"`
 	Status ESSinkConnectorStatus `json:"status,omitempty"`
+}
+
+// SetStatus ...
+func (e ESSinkConnector) SetStatus(status ESSinkConnectorStatus) {
+	e.Status = status
+}
+
+// GetStatus ...
+func (e ESSinkConnector) GetStatus() ESSinkConnectorStatus {
+	return e.Status
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
