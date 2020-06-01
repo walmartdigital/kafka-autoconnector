@@ -29,12 +29,14 @@ import (
 )
 
 var (
-	controllerName            = "controller_essinkconnector"
-	log                       = logf.Log.WithName(controllerName)
-	kafkaConnectHost          = "192.168.64.5:30256"
-	connectorRestartCachePath = "/essinkconnector/connectors/%s/restart"
-	taskRestartCachePath      = "/essinkconnector/connectors/%s/tasks/%d/restart"
-	opt                       cmp.Option
+	controllerName             = "controller_essinkconnector"
+	log                        = logf.Log.WithName(controllerName)
+	kafkaConnectHost           = "192.168.64.5:30256"
+	connectorRestartCachePath  = "/essinkconnector/connectors/%s/restart"
+	taskRestartCachePath       = "/essinkconnector/connectors/%s/tasks/%d/restart"
+	totalTasksCountCachePath   = "/essinkconnector/connectors/%s/tasks/total/count"
+	runningTasksCountCachePath = "/essinkconnector/connectors/%s/tasks/running/count"
+	opt                        cmp.Option
 )
 
 func init() {
@@ -220,7 +222,12 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 		}
 	} else {
 		healthy = true
-		for i := 0; i < status.GetTaskCount(); i++ {
+		runningTasksCount := status.GetActiveTasksCount()
+		totalTaskCount := status.GetTaskCount()
+		r.Cache.Store(fmt.Sprintf(totalTasksCountCachePath, connector.Spec.Config.Name), totalTaskCount)
+		r.Cache.Store(fmt.Sprintf(runningTasksCountCachePath, connector.Spec.Config.Name), runningTasksCount)
+
+		for i := 0; i < totalTaskCount; i++ {
 			failed, err := status.IsTaskFailed(i)
 			if err != nil {
 				return false, err
