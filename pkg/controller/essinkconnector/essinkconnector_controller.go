@@ -366,6 +366,21 @@ func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
 	return initialized
 }
 
+func (r *ReconcileESSinkConnector) getTasksInfoFromCache(name string) (int, int) {
+	v0, ok0 := r.Cache.Load(fmt.Sprintf(totalTasksCountCachePath, name))
+	v1, ok1 := r.Cache.Load(fmt.Sprintf(runningTasksCountCachePath, name))
+
+	if !ok0 {
+		v0 = 0
+	}
+
+	if !ok1 {
+		v1 = 0
+	}
+
+	return v0.(int), v1.(int)
+}
+
 func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.Result, error) {
 	log.Info("Executing ManageSuccess")
 
@@ -374,13 +389,15 @@ func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.R
 		log.Error(errors.New("not a runtime.Object"), "passed object was not a runtime.Object", "object", obj)
 		return reconcile.Result{}, nil
 	}
+
 	if connector, updateStatus := obj.(*skynetv1alpha1.ESSinkConnector); updateStatus {
+		total, running := r.getTasksInfoFromCache(connector.Spec.Config.Name)
 		status := v1alpha1.ESSinkConnectorStatus{
 			ConnectorName: connector.Spec.Config.Name,
 			Topics:        connector.Spec.Config.Topics,
 			Status:        "Running",
 			LastUpdate:    metav1.Now(),
-			Tasks:         0,
+			Tasks:         fmt.Sprintf("Running %d/%d", running, total),
 		}
 		connector.SetStatus(status)
 		err := r.GetClient().Status().Update(context.Background(), runtimeObj)
@@ -446,13 +463,15 @@ func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, issue error) (
 	r.GetRecorder().Event(runtimeObj, "Warning", "ProcessingError", issue.Error())
 
 	if connector, updateStatus := obj.(*skynetv1alpha1.ESSinkConnector); updateStatus {
+		total, running := r.getTasksInfoFromCache(connector.Spec.Config.Name)
+
 		lastUpdate := connector.GetStatus().LastUpdate.Time
 		lastStatus := connector.GetStatus().Status
 
 		status := v1alpha1.ESSinkConnectorStatus{
 			ConnectorName: connector.Spec.Config.Name,
 			Topics:        connector.Spec.Config.Topics,
-			Tasks:         0,
+			Tasks:         fmt.Sprintf("Running %d/%d", running, total),
 			LastUpdate:    metav1.Now(),
 			Reason:        issue.Error(),
 			Status:        "Failure",

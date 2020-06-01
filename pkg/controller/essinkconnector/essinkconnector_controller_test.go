@@ -132,6 +132,16 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/total/count").Return(
+			0,
+			false,
+		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/running/count").Return(
+			0,
+			false,
+		).Times(1)
+
 		fakeK8sClient.EXPECT().Status().Return(
 			fakeK8sClient,
 		).Times(1)
@@ -208,6 +218,16 @@ var _ = Describe("Run Reconcile", func() {
 		fakeKafkaConnectClient.EXPECT().Update(conObj).Return(
 			&resp1,
 			nil,
+		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/total/count").Return(
+			0,
+			true,
+		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/running/count").Return(
+			0,
+			true,
 		).Times(1)
 
 		fakeK8sClient.EXPECT().Status().Return(
@@ -297,6 +317,16 @@ var _ = Describe("Run Reconcile", func() {
 		).Times(1)
 
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/restart", 1).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/total/count").Return(
+			2,
+			true,
+		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/running/count").Return(
+			0,
+			true,
+		).Times(1)
 
 		fakeK8sClient.EXPECT().Status().Return(
 			fakeK8sClient,
@@ -398,6 +428,16 @@ var _ = Describe("Run Reconcile", func() {
 
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/1/restart", 1).Times(1)
 
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/total/count").Return(
+			2,
+			true,
+		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/running/count").Return(
+			0,
+			true,
+		).Times(1)
+
 		fakeK8sClient.EXPECT().Status().Return(
 			fakeK8sClient,
 		).Times(1)
@@ -493,6 +533,16 @@ var _ = Describe("Run Reconcile", func() {
 
 		fakeEventRecorder.EXPECT().Event(conn, "Warning", "ProcessingError", gomock.Any()).Return().Times(1)
 
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/total/count").Return(
+			0,
+			false,
+		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/running/count").Return(
+			0,
+			false,
+		).Times(1)
+
 		fakeK8sClient.EXPECT().Status().Return(
 			fakeK8sClient,
 		).Times(1)
@@ -546,6 +596,16 @@ var _ = Describe("Run Reconcile", func() {
 		).Times(1)
 
 		fakeEventRecorder.EXPECT().Event(essink, "Warning", "ProcessingError", gomock.Any()).Return().Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/total/count").Return(
+			0,
+			false,
+		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/running/count").Return(
+			0,
+			false,
+		).Times(1)
 
 		fakeK8sClient.EXPECT().Status().Return(
 			fakeK8sClient,
