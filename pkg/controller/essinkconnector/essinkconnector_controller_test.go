@@ -283,6 +283,9 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
+		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/total/count", 2).Times(1)
+		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/running/count", 0).Times(1)
+
 		fakeKafkaConnectClient.EXPECT().RestartConnector(essink.Spec.Config.Name).Return(
 			&statusResp,
 			nil,
@@ -367,6 +370,9 @@ var _ = Describe("Run Reconcile", func() {
 			&statusResp,
 			nil,
 		).Times(1)
+
+		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/total/count", 2).Times(1)
+		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/running/count", 0).Times(1)
 
 		fakeKafkaConnectClient.EXPECT().RestartTask(essink.Spec.Config.Name, 0).Return(
 			&statusResp,

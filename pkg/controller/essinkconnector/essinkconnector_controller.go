@@ -196,6 +196,11 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 
 	status := response.Payload.(kafkaconnect.Status)
 
+	runningTasksCount := status.GetActiveTasksCount()
+	totalTaskCount := status.GetTaskCount()
+	r.Cache.Store(fmt.Sprintf(totalTasksCountCachePath, connector.Spec.Config.Name), totalTaskCount)
+	r.Cache.Store(fmt.Sprintf(runningTasksCountCachePath, connector.Spec.Config.Name), runningTasksCount)
+
 	if status.IsConnectorFailed() {
 		response, error := kcc.RestartConnector(connector.Spec.Config.Name)
 
@@ -222,11 +227,6 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 		}
 	} else {
 		healthy = true
-		runningTasksCount := status.GetActiveTasksCount()
-		totalTaskCount := status.GetTaskCount()
-		r.Cache.Store(fmt.Sprintf(totalTasksCountCachePath, connector.Spec.Config.Name), totalTaskCount)
-		r.Cache.Store(fmt.Sprintf(runningTasksCountCachePath, connector.Spec.Config.Name), runningTasksCount)
-
 		for i := 0; i < totalTaskCount; i++ {
 			failed, err := status.IsTaskFailed(i)
 			if err != nil {
