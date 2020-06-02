@@ -38,19 +38,41 @@ spec:
                 https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
               properties:
                 batch.size:
-                  type: string
+                  type: integer
                 behavior.on.malformed.documents:
                   type: string
+                connection.compression:
+                  type: boolean
+                connection.password:
+                  type: string
+                connection.timeout.ms:
+                  type: integer
                 connection.url:
+                  type: string
+                connection.username:
                   type: string
                 connector.class:
                   type: string
+                flush.timeout.ms:
+                  type: integer
                 key.ignore:
-                  type: string
+                  type: boolean
+                linger.ms:
+                  type: integer
+                max.buffered.records:
+                  type: integer
+                max.in.flight.requests:
+                  type: integer
+                max.retries:
+                  type: integer
                 name:
                   type: string
+                read.timeout.ms:
+                  type: integer
+                retry.backoff.ms:
+                  type: integer
                 schema.ignore:
-                  type: string
+                  type: boolean
                 topic.index.map:
                   type: string
                 topics:
@@ -60,7 +82,6 @@ spec:
                 type.name:
                   type: string
               required:
-              - batch.size
               - connection.url
               - connector.class
               - key.ignore
