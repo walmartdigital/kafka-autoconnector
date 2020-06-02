@@ -60,10 +60,10 @@ var _ = Describe("Run Reconcile", func() {
 			DocumentType:                 "log",
 			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
 			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
-			BatchSize:                    "100",
+			BatchSize:                    100,
 			ConnectionURL:                "https://elasticsearch",
-			KeyIgnore:                    "true",
-			SchemaIgnore:                 "true",
+			KeyIgnore:                    true,
+			SchemaIgnore:                 true,
 			BehaviorOnMalformedDocuments: "ignore",
 		}
 
@@ -101,7 +101,7 @@ var _ = Describe("Run Reconcile", func() {
 		}
 
 		resp := kafkaconnect.Response{
-			Result: "error",
+			Result: "notfound",
 		}
 
 		fakeK8sClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
@@ -168,10 +168,10 @@ var _ = Describe("Run Reconcile", func() {
 			DocumentType:                 "log",
 			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
 			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
-			BatchSize:                    "100",
+			BatchSize:                    100,
 			ConnectionURL:                "https://elasticsearch",
-			KeyIgnore:                    "true",
-			SchemaIgnore:                 "true",
+			KeyIgnore:                    true,
+			SchemaIgnore:                 true,
 			BehaviorOnMalformedDocuments: "warn",
 		}
 
@@ -503,10 +503,10 @@ var _ = Describe("Run Reconcile", func() {
 			DocumentType:                 "log",
 			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
 			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
-			BatchSize:                    "100",
+			BatchSize:                    100,
 			ConnectionURL:                "https://elasticsearch",
-			KeyIgnore:                    "true",
-			SchemaIgnore:                 "true",
+			KeyIgnore:                    true,
+			SchemaIgnore:                 true,
 			BehaviorOnMalformedDocuments: "invalid",
 		}
 
@@ -564,7 +564,7 @@ var _ = Describe("Run Reconcile", func() {
 		}
 
 		resp := kafkaconnect.Response{
-			Result: "error",
+			Result: "notfound",
 		}
 
 		fakeK8sClient.EXPECT().Get(context.TODO(), name, &skynetv1alpha1.ESSinkConnector{}).Return(
@@ -628,10 +628,10 @@ var _ = Describe("Run Reconcile", func() {
 			DocumentType:                 "log",
 			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
 			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
-			BatchSize:                    "100",
+			BatchSize:                    100,
 			ConnectionURL:                "https://elasticsearch",
-			KeyIgnore:                    "true",
-			SchemaIgnore:                 "true",
+			KeyIgnore:                    true,
+			SchemaIgnore:                 true,
 			BehaviorOnMalformedDocuments: "ignore",
 		}
 
