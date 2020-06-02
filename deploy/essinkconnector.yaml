@@ -12,10 +12,10 @@ spec:
     connection.url: "http://elasticsearch-master:9200"
     connection.username: "${vault:secret/underworld/kafka-connect/tools/elasticlogs:username}"
     connection.password: "${vault:secret/underworld/kafka-connect/tools/elasticlogs:password}"
-    key.ignore: "true"
-    schema.ignore: "true"
+    key.ignore: true
+    schema.ignore: true
     behavior.on.malformed.documents: "ignore"
-    batch.size: "200"
+    batch.size: 200
     max.in.flight.requests: 5
     max.buffered.records: 20000
     linger.ms: 1

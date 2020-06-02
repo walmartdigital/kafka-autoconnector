@@ -342,15 +342,17 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 			}
 		}
 	} else if response.Result == "notfound" {
-		log.Info(fmt.Sprintf("Failed to get connector %s", config.Name))
+		log.Info(fmt.Sprintf("Connector %s not found", config.Name))
 		resp3, createErr := kcc.Create(conObj)
 		log.Info(fmt.Sprintf("Creating new connector %s", config.Name))
 		if resp3.Result == "success" {
 			return nil
 		} else {
+			log.Error(createErr, fmt.Sprintf("Error occurred creating connector %s", config.Name))
 			return createErr
 		}
 	} else if readErr != nil {
+		log.Error(readErr, fmt.Sprintf("Error occurred reading connector %s", config.Name))
 		return readErr
 	}
 	return nil
