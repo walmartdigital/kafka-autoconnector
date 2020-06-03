@@ -496,7 +496,6 @@ func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
 			return false
 		}
 	}
-
 	return initialized
 }
 
@@ -526,7 +525,7 @@ func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.R
 			Topics:        connector.Spec.Config.Topics,
 			Status:        "Running",
 			LastUpdate:    metav1.Now(),
-			Tasks:         fmt.Sprintf("Running %d/%d", running, total),
+			Tasks:         fmt.Sprintf("%d/%d", running, total),
 		}
 
 		err := r.GetClient().Status().Update(context.Background(), connector)
@@ -606,7 +605,7 @@ func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, issue error) (
 		connector.Status = v1alpha1.ESSinkConnectorStatus{
 			ConnectorName: connector.Spec.Config.Name,
 			Topics:        connector.Spec.Config.Topics,
-			Tasks:         fmt.Sprintf("Running %d/%d", running, total),
+			Tasks:         fmt.Sprintf("%d/%d", running, total),
 			LastUpdate:    metav1.Now(),
 			Reason:        issue.Error(),
 			Status:        "Failure",
