@@ -7,37 +7,37 @@ pipeline:
     when:
       event: [push, tag]
 
-  security:
-    image: golang:1.14
-    commands:
-      - "go get github.com/securego/gosec/cmd/gosec"
-      - "/go/bin/gosec ./..."
-    when:
-      event: [push, tag]
+  # security:
+  #   image: golang:1.14
+  #   commands:
+  #     - "go get github.com/securego/gosec/cmd/gosec"
+  #     - "/go/bin/gosec ./..."
+  #   when:
+  #     event: [push, tag]
 
-  style:
-    image: golang:1.14
-    commands:
-      - "go get github.com/qiniu/checkstyle/gocheckstyle"
-      - "/go/bin/gocheckstyle -config=.go_style ./ server regex common"
-    when:
-      event: [push, tag]
+  # style:
+  #   image: golang:1.14
+  #   commands:
+  #     - "go get github.com/qiniu/checkstyle/gocheckstyle"
+  #     - "/go/bin/gocheckstyle -config=.go_style ./ server regex common"
+  #   when:
+  #     event: [push, tag]
 
-  naming:
-    image: golang:1.14
-    commands:
-      - "go get -v github.com/quasilyte/go-namecheck"
-      - "/go/bin/go-namecheck -rules .go_naming_rules ./..."
-    when:
-      event: [push, tag]
+  # naming:
+  #   image: golang:1.14
+  #   commands:
+  #     - "go get -v github.com/quasilyte/go-namecheck"
+  #     - "/go/bin/go-namecheck -rules .go_naming_rules ./..."
+  #   when:
+  #     event: [push, tag]
 
-  code-duplicates:
-    image: golang:1.14
-    commands:
-      - "go get -u github.com/mibk/dupl"
-      - "dupl -t 200"
-    when:
-      event: [push, tag]
+  # code-duplicates:
+  #   image: golang:1.14
+  #   commands:
+  #     - "go get -u github.com/mibk/dupl"
+  #     - "dupl -t 200"
+  #   when:
+  #     event: [push, tag]
 
   test:
     image: golang:1.14
