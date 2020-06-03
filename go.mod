@@ -18,7 +18,7 @@ require (
 	github.com/redhat-cop/operator-utils v0.2.4
 	github.com/securego/gosec v0.0.0-20200401082031-e946c8c39989 // indirect
 	github.com/spf13/pflag v1.0.5
-	github.com/walmartdigital/go-kaya v0.0.0-20200602185225-b6b835a560c9
+	github.com/walmartdigital/go-kaya v0.0.0-20200603184956-a199dfd73ef6
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/tools v0.0.0-20200601175630-2caf76543d99 // indirect
 	gopkg.in/go-playground/validator.v9 v9.31.0 // indirect

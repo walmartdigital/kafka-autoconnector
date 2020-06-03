@@ -43,31 +43,9 @@ var (
 	maxConnectorRestarts            = 5
 	maxTaskRestarts                 = 5
 	maxConnectorHardResets          = 3
-	opt                             cmp.Option
 )
 
 func init() {
-	// This should probably be moved to the go-kaya repo for domain/cohesion purposes
-	opt = cmp.Comparer(func(a, b kafkaconnect.ConnectorConfig) bool {
-		if a == (kafkaconnect.ConnectorConfig{}) && b == (kafkaconnect.ConnectorConfig{}) {
-			return true
-		} else if a != (kafkaconnect.ConnectorConfig{}) && b != (kafkaconnect.ConnectorConfig{}) {
-			if a.Name == b.Name &&
-				a.ConnectorClass == b.ConnectorClass &&
-				a.DocumentType == b.DocumentType &&
-				a.Topics == b.Topics &&
-				a.TopicIndexMap == b.TopicIndexMap &&
-				a.BatchSize == b.BatchSize &&
-				a.ConnectionURL == b.ConnectionURL &&
-				a.KeyIgnore == b.KeyIgnore &&
-				a.SchemaIgnore == b.SchemaIgnore &&
-				a.BehaviorOnMalformedDocuments == b.BehaviorOnMalformedDocuments {
-				return true
-			}
-		}
-		return false
-	})
-
 	addr := os.Getenv("KAFKA_CONNECT_ADDR")
 	if addr != "" {
 		kafkaConnectHost = addr
@@ -435,7 +413,7 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 	log.Info(fmt.Sprintf("Reading connector %s from Kafka Connect", config.Name))
 
 	if response.Result == "success" {
-		if !cmp.Equal(connector.Spec.Config, response.Payload, opt) {
+		if !cmp.Equal(connector.Spec.Config, response.Payload, kafkaconnect.ConnectorConfigComparer) {
 			resp, updateErr := kcc.Update(conObj)
 			if resp.Result == "success" {
 				log.Info(fmt.Sprintf("Connector %s already exists, updating configuration", config.Name))

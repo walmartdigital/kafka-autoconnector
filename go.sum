@@ -145,6 +145,7 @@ github.com/cespare/xxhash/v2 v2.1.1 h1:6MnRN8NT7+YBpUIWxHtefFZOKTAPgGjpQSxqLNn0+
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5/go.mod h1:/iP1qXHoty45bqomnu2LM+VVyAEdWN+vtSHGlQgyxbw=
 github.com/chinniehendrix/go-kaya v0.0.0-20200525193621-604ebe2a0d38/go.mod h1:PqwXBrLm+iILWDPbZpBPU4YUSzVYIQ9fIF0qfw3nU5Y=
+github.com/chinniehendrix/go-kaya v0.0.0-20200526040312-404214c43ac0/go.mod h1:PqwXBrLm+iILWDPbZpBPU4YUSzVYIQ9fIF0qfw3nU5Y=
 github.com/circonus-labs/circonus-gometrics v2.3.1+incompatible/go.mod h1:nmEj6Dob7S7YxXgwXpfOuvO54S+tGdZdw9fuRZt25Ag=
 github.com/circonus-labs/circonusllhist v0.1.3/go.mod h1:kMXHVDlOchFAehlya5ePtbp5jckzBHf4XRpQvBOLI+I=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
@@ -895,6 +896,8 @@ github.com/walmartdigital/go-kaya v0.0.0-20200602135938-996b21442752 h1:Z/UlatGW
 github.com/walmartdigital/go-kaya v0.0.0-20200602135938-996b21442752/go.mod h1:fFA5y1KnyhMj74MHR8DKpdx9oruYkRapblMmbJZ29Dg=
 github.com/walmartdigital/go-kaya v0.0.0-20200602185225-b6b835a560c9 h1:qVShVQ4jnXEM+Iz8lzMK2SkEihIwOq9vbFOE2uyN/KM=
 github.com/walmartdigital/go-kaya v0.0.0-20200602185225-b6b835a560c9/go.mod h1:fFA5y1KnyhMj74MHR8DKpdx9oruYkRapblMmbJZ29Dg=
+github.com/walmartdigital/go-kaya v0.0.0-20200603184956-a199dfd73ef6 h1:iYFlmzmkpMErt6dFti4Sx8yZEf0Lhe8IHFDM/z0IUds=
+github.com/walmartdigital/go-kaya v0.0.0-20200603184956-a199dfd73ef6/go.mod h1:ZsDxUXZ+/8u+hn4/0epo1M03KOH8m/3evIDGo7sn3JU=
 github.com/walmartdigital/go-kaya v0.0.2/go.mod h1:EjbnORLIUYuD1LX+d5Pv9jvdF717XWjm5e2xrLWYzG8=
 github.com/walmartdigital/go-kaya v0.0.3 h1:X1KGK81ZysmYUpCHsxvb9mou1w2VhMPbQq4V9Xu54aw=
 github.com/walmartdigital/go-kaya v0.0.3/go.mod h1:PLpsMvBHr2l3IZTDDztRW3gs777Rl/wM4v6xLtAwkIA=
