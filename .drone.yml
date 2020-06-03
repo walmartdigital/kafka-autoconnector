@@ -52,7 +52,7 @@ pipeline:
     pull: true
     image: plugins/docker
     registry: walmartdigital.azurecr.io
-    repo: walmartdigital.azurecr.io/sre-metrics-collector
+    repo: walmartdigital/kafka-autoconnector
     tags:
       - latest
       - ${DRONE_TAG}
