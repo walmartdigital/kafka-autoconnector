@@ -342,7 +342,7 @@ var _ = Describe("Run Reconcile", func() {
 		_, _ = r.Reconcile(req)
 	})
 
-	It("should restart a failed task and log the event in the cache", func() {
+	It("should restart failed tasks and log the event in the cache", func() {
 		name := types.NamespacedName{
 			Namespace: "default",
 			Name:      "blah",
@@ -404,26 +404,26 @@ var _ = Describe("Run Reconcile", func() {
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/total/count", 2).Times(1)
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/running/count", 0).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().RestartTask(essink.Spec.Config.Name, 0).Return(
-			&statusResp,
-			nil,
-		).Times(1)
-
 		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/0/restart").Return(
 			nil,
 			false,
 		).Times(1)
 
-		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/0/restart", 1).Times(1)
-
-		fakeKafkaConnectClient.EXPECT().RestartTask(essink.Spec.Config.Name, 1).Return(
+		fakeKafkaConnectClient.EXPECT().RestartTask(essink.Spec.Config.Name, 0).Return(
 			&statusResp,
 			nil,
 		).Times(1)
 
+		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/0/restart", 1).Times(1)
+
 		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/1/restart").Return(
 			nil,
 			false,
+		).Times(1)
+
+		fakeKafkaConnectClient.EXPECT().RestartTask(essink.Spec.Config.Name, 1).Return(
+			&statusResp,
+			nil,
 		).Times(1)
 
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/1/restart", 1).Times(1)
@@ -452,7 +452,7 @@ var _ = Describe("Run Reconcile", func() {
 		_, _ = r.Reconcile(req)
 	})
 
-	It("should reach maxFailedTasks and restart the connector", func() {
+	It("should reach maxTaskRestarts and restart the connector", func() {
 		name := types.NamespacedName{
 			Namespace: "default",
 			Name:      "blah",
