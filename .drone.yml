@@ -1,62 +1,17 @@
-pipeline:
-  lint:
-    image: golang:1.14
-    commands:
-      - "go get -u golang.org/x/lint/golint"
-      - "/go/bin/golint -set_exit_status -min_confidence 0.81 ./..."
-    when:
-      event: [push, tag]
-
-  # security:
-  #   image: golang:1.14
-  #   commands:
-  #     - "go get github.com/securego/gosec/cmd/gosec"
-  #     - "/go/bin/gosec ./..."
-  #   when:
-  #     event: [push, tag]
-
-  # style:
-  #   image: golang:1.14
-  #   commands:
-  #     - "go get github.com/qiniu/checkstyle/gocheckstyle"
-  #     - "/go/bin/gocheckstyle -config=.go_style ./ server regex common"
-  #   when:
-  #     event: [push, tag]
-
-  # naming:
-  #   image: golang:1.14
-  #   commands:
-  #     - "go get -v github.com/quasilyte/go-namecheck"
-  #     - "/go/bin/go-namecheck -rules .go_naming_rules ./..."
-  #   when:
-  #     event: [push, tag]
-
-  # code-duplicates:
-  #   image: golang:1.14
-  #   commands:
-  #     - "go get -u github.com/mibk/dupl"
-  #     - "dupl -t 200"
-  #   when:
-  #     event: [push, tag]
-
-  test:
-    image: golang:1.14
-    commands:
-      - "go get -d -v ./..."
-      - "go test -cover ./..."
-      - "go build -ldflags \"-s -w -X main.revision=$(git rev-parse HEAD)\" -a"
-    when:
-      event: [push, tag]
-
-  publish:
-    pull: true
-    image: plugins/docker
-    registry: walmartdigital.azurecr.io
-    repo: walmartdigital/kafka-autoconnector
-    tags:
-      - latest
-      - ${DRONE_TAG}
-    secrets: [ docker_username, docker_password ]
-    when:
-      event: [tag]
-
+kind: pipeline
+type: docker
+name: default
+   
+steps:
+- name: build
+  image: chindou/operator-sdk-image:latest
+  commands:
+    - apk add --update --no-cache vim git make musl-dev go curl gcc build-base
+    # Configure Go
+    - export GOPATH=/root/go
+    - export PATH=${GOPATH}/bin:/usr/local/go/bin:$PATH
+    - export GOBIN=$GOROOT/bin
+    - mkdir -p ${GOPATH}/src ${GOPATH}/bin
+    - export GO111MODULE=on
+    - go version
+    - operator-sdk build kafka-autoconnector:latest
