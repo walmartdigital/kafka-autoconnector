@@ -7,6 +7,7 @@ import (
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
+// RandSeq ...
 func RandSeq(n int) string {
 	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, n)

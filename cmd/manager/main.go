@@ -54,9 +54,11 @@ func printVersion() {
 	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
 }
 
+// KCClientFactory ...
 type KCClientFactory struct {
 }
 
+// Create ...
 func (kcf KCClientFactory) Create(host string, factory client.HTTPClientFactory) (kafkaconnect.KafkaConnectClient, error) {
 	config := client.HTTPClientConfig{
 		Headers:            map[string]string{"Content-type": "application/json"},

@@ -440,20 +440,18 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 			if resp.Result == "success" {
 				log.Info(fmt.Sprintf("Connector %s already exists, updating configuration", config.Name))
 				return nil
-			} else {
-				log.Error(updateErr, fmt.Sprintf("Error occurred updating configuration for connector %s", config.Name))
-				return updateErr
 			}
+			log.Error(updateErr, fmt.Sprintf("Error occurred updating configuration for connector %s", config.Name))
+			return updateErr
+		}
+		healthy, err := r.CheckAndHealConnector(connector, kcc)
+		if err != nil {
+			return err
+		}
+		if healthy {
+			log.Info(fmt.Sprintf("Connector %s is healthy", config.Name))
 		} else {
-			healthy, err := r.CheckAndHealConnector(connector, kcc)
-			if err != nil {
-				return err
-			}
-			if healthy {
-				log.Info(fmt.Sprintf("Connector %s is healthy", config.Name))
-			} else {
-				log.Info(fmt.Sprintf("Connector %s is unhealthy, self-healing in progress", config.Name))
-			}
+			log.Info(fmt.Sprintf("Connector %s is unhealthy, self-healing in progress", config.Name))
 		}
 	} else if response.Result == "notfound" {
 		log.Info(fmt.Sprintf("Connector %s not found", config.Name))
@@ -461,10 +459,9 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 		log.Info(fmt.Sprintf("Creating new connector %s", config.Name))
 		if resp3.Result == "success" {
 			return nil
-		} else {
-			log.Error(createErr, fmt.Sprintf("Error occurred creating connector %s", config.Name))
-			return createErr
 		}
+		log.Error(createErr, fmt.Sprintf("Error occurred creating connector %s", config.Name))
+		return createErr
 	} else if readErr != nil {
 		log.Error(readErr, fmt.Sprintf("Error occurred reading connector %s", config.Name))
 		return readErr
@@ -472,6 +469,7 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 	return nil
 }
 
+// IsValid ...
 func (r *ReconcileESSinkConnector) IsValid(obj metav1.Object) (bool, error) {
 	log.Info("Validating CR")
 
@@ -480,17 +478,17 @@ func (r *ReconcileESSinkConnector) IsValid(obj metav1.Object) (bool, error) {
 
 	if !ok {
 		return false, errors.New("Object is not of type ESSinkConnector")
-	} else {
-		config := connector.Spec.Config
+	}
+	config := connector.Spec.Config
 
-		err := v.Struct(config)
-		if err != nil {
-			return false, err
-		}
+	err := v.Struct(config)
+	if err != nil {
+		return false, err
 	}
 	return true, nil
 }
 
+// IsInitialized ...
 func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
 	log.Info("Checking if CR is initialized")
 	initialized := true
@@ -530,6 +528,7 @@ func (r *ReconcileESSinkConnector) getTasksInfoFromCache(name string) (int, int)
 	return v0.(int), v1.(int)
 }
 
+// ManageSuccess ...
 func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.Result, error) {
 	log.Info("Executing ManageSuccess")
 
@@ -564,6 +563,7 @@ func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.R
 	}, nil
 }
 
+// ManageCleanUpLogic ...
 func (r *ReconcileESSinkConnector) ManageCleanUpLogic(obj metav1.Object, kcc kafkaconnect.KafkaConnectClient) error {
 	log.Info("Running clean up logic on ESSinkConnector")
 	connector, ok := obj.(*skynetv1alpha1.ESSinkConnector)
@@ -587,12 +587,12 @@ func (r *ReconcileESSinkConnector) ManageCleanUpLogic(obj metav1.Object, kcc kaf
 	if response.Result == "success" {
 		log.Info(fmt.Sprintf("Connector %s deleted successfully", config.Name))
 		return nil
-	} else {
-		log.Info(fmt.Sprintf("Failed to delete connector %s", config.Name))
-		return err
 	}
+	log.Info(fmt.Sprintf("Failed to delete connector %s", config.Name))
+	return err
 }
 
+// ManageError ...
 func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, issue error) (reconcile.Result, error) {
 	log.Info("Calling ManageError")
 
