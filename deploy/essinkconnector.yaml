@@ -25,3 +25,4 @@ spec:
     connection.compression: false
     connection.timeout.ms: 1000
     read.timeout.ms: 3000
+    value.converter.schemas.enable: false
