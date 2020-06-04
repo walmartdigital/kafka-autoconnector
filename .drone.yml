@@ -15,10 +15,10 @@ steps:
   image: plugins/docker
   settings:
     dockerfile: build/Dockerfile
-    repo: chindou/kafka-autoconnector
+    repo: walmartdigital/kafka-autoconnector
     tags:
       - latest
-      # - ${DRONE_TAG}
+      - ${DRONE_TAG}
     username:
       from_secret: docker_username
     password:
