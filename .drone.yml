@@ -4,14 +4,29 @@ name: default
    
 steps:
 - name: build
-  image: chindou/operator-sdk-image:latest
+  pull: always
+  image: golang:alpine
   commands:
-    - apk add --update --no-cache vim git make musl-dev go curl gcc build-base
-    # Configure Go
-    - export GOPATH=/root/go
-    - export PATH=${GOPATH}/bin:/usr/local/go/bin:$PATH
-    - export GOBIN=$GOROOT/bin
-    - mkdir -p ${GOPATH}/src ${GOPATH}/bin
-    - export GO111MODULE=on
-    - go version
-    - operator-sdk build kafka-autoconnector:latest
+    - apk update && apk --no-cache add git dep ca-certificates musl-dev gcc build-base
+    - go build -o ./build/_output/bin/kafka-autoconnector -gcflags all=-trimpath=/drone/src -asmflags all=-trimpath=/drone/src github.com/walmartdigital/kafka-autoconnector/cmd/manager
+
+- name: docker
+  pull: always
+  image: plugins/docker
+  settings:
+    dockerfile: build/Dockerfile
+    repo: chindou/kafka-autoconnector
+    tags:
+      - latest
+      # - ${DRONE_TAG}
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    trigger:
+      branch:
+      - master
+      event:
+      - push
+      - tag
+  
