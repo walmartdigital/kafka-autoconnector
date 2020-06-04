@@ -30,6 +30,5 @@ steps:
       branch:
       - master
       event:
-      - push
       - tag
   
