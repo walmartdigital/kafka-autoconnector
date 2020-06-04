@@ -1,6 +1,9 @@
 kind: pipeline
 type: docker
 name: default
+
+workspace:
+  path: /drone/src/kafka-autoconnector
    
 steps:
 - name: build
@@ -8,7 +11,7 @@ steps:
   image: golang:alpine
   commands:
     - apk update && apk --no-cache add git dep ca-certificates musl-dev gcc build-base
-    - go build -o ./build/_output/bin/kafka-autoconnector -gcflags all=-trimpath=/drone/src -asmflags all=-trimpath=/drone/src github.com/walmartdigital/kafka-autoconnector/cmd/manager
+    - CGO_ENABLED=0 go build -o ./build/_output/bin/kafka-autoconnector -gcflags all=-trimpath=/drone/src -asmflags all=-trimpath=/drone/src github.com/walmartdigital/kafka-autoconnector/cmd/manager
 
 - name: docker
   pull: always
