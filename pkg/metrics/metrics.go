@@ -9,15 +9,16 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type metricsKey string
+// MetricsKey ...
+type MetricsKey string
 
-const (
+var (
 	// TotalNumTasks ...
-	TotalNumTasks metricsKey = "totalNumTasks"
+	TotalNumTasks MetricsKey = "totalNumTasks"
 	// NumRunningTasks ...
-	NumRunningTasks metricsKey = "numRunningTasks"
+	NumRunningTasks MetricsKey = "numRunningTasks"
 	// ConnectorUptime ...
-	ConnectorUptime metricsKey = "connectorUptime"
+	ConnectorUptime MetricsKey = "connectorUptime"
 )
 
 // Metrics ...
