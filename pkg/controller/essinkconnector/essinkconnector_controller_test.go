@@ -42,6 +42,7 @@ var _ = Describe("Run Reconcile", func() {
 		fakeEventRecorder             *mocks.MockEventRecorder
 		fakeK8sClient                 *mocks.MockClient
 		fakeCache                     *mocks.MockCache
+		fakeMetrics                   *mocks.MockMetrics
 		fakeKafkaConnectClient        *mocks.MockKafkaConnectClient
 		fakeKafkaConnectClientFactory *mocks.MockKafkaConnectClientFactory
 		r                             *essinkconnector.ReconcileESSinkConnector
@@ -53,6 +54,7 @@ var _ = Describe("Run Reconcile", func() {
 		fakeKafkaConnectClient = mocks.NewMockKafkaConnectClient(ctrl)
 		fakeKafkaConnectClientFactory = mocks.NewMockKafkaConnectClientFactory(ctrl)
 		fakeCache = mocks.NewMockCache(ctrl)
+		fakeMetrics = mocks.NewMockMetrics(ctrl)
 
 		config := kafkaconnect.ConnectorConfig{
 			Name:                         "amida.logging",
@@ -91,6 +93,7 @@ var _ = Describe("Run Reconcile", func() {
 			),
 			KafkaConnectClientFactory: fakeKafkaConnectClientFactory,
 			Cache:                     fakeCache,
+			Metrics:                   fakeMetrics,
 		}
 	})
 
