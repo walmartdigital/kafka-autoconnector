@@ -9,7 +9,16 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var metrics map[string]interface{}
+type metricsKey string
+
+const (
+	// TotalNumTasks ...
+	TotalNumTasks metricsKey = "totalNumTasks"
+	// NumRunningTasks ...
+	NumRunningTasks metricsKey = "numRunningTasks"
+	// ConnectorUptime ...
+	ConnectorUptime metricsKey = "connectorUptime"
+)
 
 // Metrics ...
 type Metrics interface {
@@ -54,11 +63,11 @@ func (p PrometheusMetrics) InitMetrics() {
 			Name: "kafkautoconnector_total_connector_tasks",
 			Help: "Total number of connector tasks",
 		},
-		[]string{"ns", "rn"},
+		[]string{"ns", "rn", "connector_name"},
 	)
 	prometheus.MustRegister(totalNumTasksMetric)
 	p.metrics.Store(
-		"totalNumTasks",
+		TotalNumTasks,
 		totalNumTasksMetric,
 	)
 
@@ -67,11 +76,11 @@ func (p PrometheusMetrics) InitMetrics() {
 			Name: "kafkautoconnector_running_connector_tasks",
 			Help: "Number of running connector tasks",
 		},
-		[]string{"ns", "rn"},
+		[]string{"ns", "rn", "connector_name"},
 	)
 	prometheus.MustRegister(runningNumTasksMetric)
 	p.metrics.Store(
-		"numRunningTasks",
+		NumRunningTasks,
 		runningNumTasksMetric,
 	)
 
@@ -80,11 +89,11 @@ func (p PrometheusMetrics) InitMetrics() {
 			Name: "kafkautoconnector_connector_uptime",
 			Help: "Time that connector has been in RUNNING state",
 		},
-		[]string{"ns", "rn"},
+		[]string{"ns", "rn", "connector_name"},
 	)
 	prometheus.MustRegister(uptimeMetric)
 	p.metrics.Store(
-		"connectorUptime",
+		ConnectorUptime,
 		uptimeMetric,
 	)
 }
