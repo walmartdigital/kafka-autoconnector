@@ -17,6 +17,7 @@ import (
 	"github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/cache"
+	"github.com/walmartdigital/kafka-autoconnector/pkg/metrics"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,16 +92,17 @@ func init() {
 
 // Add creates a new ESSinkConnector Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, c cache.Cache, kcf kafkaconnect.KafkaConnectClientFactory) error {
-	return add(mgr, newReconciler(mgr, c, kcf))
+func Add(mgr manager.Manager, c cache.Cache, m metrics.Metrics, kcf kafkaconnect.KafkaConnectClientFactory) error {
+	return add(mgr, newReconciler(mgr, c, m, kcf))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, c cache.Cache, kcf kafkaconnect.KafkaConnectClientFactory) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, c cache.Cache, m metrics.Metrics, kcf kafkaconnect.KafkaConnectClientFactory) reconcile.Reconciler {
 	return &ReconcileESSinkConnector{
 		ReconcilerBase:            util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
 		KafkaConnectClientFactory: kcf,
 		Cache:                     c,
+		Metrics:                   m,
 	}
 }
 
@@ -132,6 +134,7 @@ type ReconcileESSinkConnector struct {
 	util.ReconcilerBase
 	kafkaconnect.KafkaConnectClientFactory
 	cache.Cache
+	metrics.Metrics
 }
 
 // Reconcile reads that state of the cluster for a ESSinkConnector object and makes changes based on the state read
