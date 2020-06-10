@@ -3,6 +3,7 @@ package http
 import (
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -58,7 +59,8 @@ func CreateServer(server Server, router Router) *WebServer {
 }
 
 // Run ...
-func (s *WebServer) Run() {
+func (s *WebServer) Run(wg *sync.WaitGroup) {
+	defer wg.Done()
 	s.handleRequests()
 }
 

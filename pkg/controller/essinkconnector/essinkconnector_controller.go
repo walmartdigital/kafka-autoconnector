@@ -353,6 +353,7 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 	totalTaskCount := status.GetTaskCount()
 	r.Cache.Store(fmt.Sprintf(totalTasksCountCachePath, connector.Spec.Config.Name), totalTaskCount)
 	r.Cache.Store(fmt.Sprintf(runningTasksCountCachePath, connector.Spec.Config.Name), runningTasksCount)
+
 	r.Metrics.SetGauge(string(metrics.TotalNumTasks), float64(totalTaskCount), connector.Namespace, controllerName, connector.Spec.Config.Name)
 	r.Metrics.SetGauge(string(metrics.NumRunningTasks), float64(runningTasksCount), connector.Namespace, controllerName, connector.Spec.Config.Name)
 

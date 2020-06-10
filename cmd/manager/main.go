@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -49,6 +50,7 @@ var (
 	operatorMetricsPort int32 = 8686
 	controllerCache     *controller_cache.InMemoryCache
 	controllerMetrics   *controller_metrics.PrometheusMetrics
+	wg                  *sync.WaitGroup
 )
 var log = logf.Log.WithName("cmd")
 
@@ -136,7 +138,7 @@ func main() {
 	}
 
 	controllerCache = controller_cache.NewInMemoryCache()
-	controllerMetrics := controller_metrics.PrometheusMetricsFactory{}.Create()
+	controllerMetrics := controller_metrics.NewPrometheusMetrics()
 
 	// Create a new manager to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, options)
@@ -167,7 +169,10 @@ func main() {
 	httpServer := &http.Server{Addr: ":10000", Handler: router}
 	metricsServer := controller_http.CreateServer(httpServer, routerWrapper)
 	log.Info("Starting the custom metrics server.")
-	metricsServer.Run()
+
+	wg = new(sync.WaitGroup)
+	wg.Add(1)
+	go metricsServer.Run(wg)
 
 	log.Info("Starting the Cmd.")
 
@@ -176,7 +181,11 @@ func main() {
 		log.Error(err, "Manager exited non-zero")
 		os.Exit(1)
 	}
+	wg.Wait()
 }
+
+// func mainMetricsServer(wg *sync.WaitGroup) {
+// }
 
 // addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
 // the Prometheus operator

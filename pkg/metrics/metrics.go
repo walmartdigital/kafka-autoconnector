@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -39,107 +38,87 @@ type MetricsFactory interface {
 type PrometheusMetricsFactory struct {
 }
 
-// Create ...
-func (p PrometheusMetricsFactory) Create() Metrics {
-	metrics := new(PrometheusMetrics)
-	metrics.InitMetrics()
-	return metrics
+// NewPrometheusMetrics ...
+func NewPrometheusMetrics() *PrometheusMetrics {
+	obj := PrometheusMetrics{
+		metrics: make(map[string]interface{}),
+		log:     logf.Log.WithName(componentName),
+		mutex:   new(sync.Mutex),
+	}
+	obj.InitMetrics()
+	return &obj
 }
 
 // PrometheusMetrics ...
 type PrometheusMetrics struct {
-	metrics *sync.Map
+	mutex   *sync.Mutex
+	metrics map[string]interface{}
 	log     logr.Logger
 }
 
 var componentName string = "kafka_autoconnector_custom_metrics"
 
 // InitMetrics ...
-func (p PrometheusMetrics) InitMetrics() {
-	p.metrics = new(sync.Map)
-	p.log = logf.Log.WithName(componentName)
-
-	totalNumTasksMetric := prometheus.NewGaugeVec(
+func (p *PrometheusMetrics) InitMetrics() {
+	p.mutex.Lock()
+	p.metrics[string(TotalNumTasks)] = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "kafkautoconnector_total_connector_tasks",
 			Help: "Total number of connector tasks",
 		},
 		[]string{"ns", "rn", "connector_name"},
 	)
-	prometheus.MustRegister(totalNumTasksMetric)
-	p.metrics.Store(
-		TotalNumTasks,
-		totalNumTasksMetric,
-	)
+	p.metrics[string(TotalNumTasks)].(*prometheus.GaugeVec).WithLabelValues("", "", "")
+	prometheus.MustRegister(p.metrics[string(TotalNumTasks)].(*prometheus.GaugeVec))
 
-	runningNumTasksMetric := prometheus.NewGaugeVec(
+	p.metrics[string(NumRunningTasks)] = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "kafkautoconnector_running_connector_tasks",
 			Help: "Number of running connector tasks",
 		},
 		[]string{"ns", "rn", "connector_name"},
 	)
-	prometheus.MustRegister(runningNumTasksMetric)
-	p.metrics.Store(
-		NumRunningTasks,
-		runningNumTasksMetric,
-	)
+	p.metrics[string(NumRunningTasks)].(*prometheus.GaugeVec).WithLabelValues("", "", "")
+	prometheus.MustRegister(p.metrics[string(NumRunningTasks)].(*prometheus.GaugeVec))
 
-	uptimeMetric := prometheus.NewGaugeVec(
+	p.metrics[string(ConnectorUptime)] = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "kafkautoconnector_connector_uptime",
 			Help: "Time that connector has been in RUNNING state",
 		},
 		[]string{"ns", "rn", "connector_name"},
 	)
-	prometheus.MustRegister(uptimeMetric)
-	p.metrics.Store(
-		ConnectorUptime,
-		uptimeMetric,
-	)
+	p.metrics[string(ConnectorUptime)].(*prometheus.GaugeVec).WithLabelValues("", "", "")
+	prometheus.MustRegister(p.metrics[string(ConnectorUptime)].(*prometheus.GaugeVec))
+	p.mutex.Unlock()
 }
 
 // IncrementCounter ...
-func (p PrometheusMetrics) IncrementCounter(key string, labels ...string) {
-	m, ok := p.metrics.Load(key)
-
-	if !ok {
-		err := fmt.Errorf("Panicking, could not retrieve metric %s", key)
-		p.log.Error(err, "Error occurred while incrementing metric counter")
-		panic(err.Error())
-	}
-	m.(*prometheus.CounterVec).WithLabelValues(labels...).Inc()
+func (p *PrometheusMetrics) IncrementCounter(key string, labels ...string) {
+	p.mutex.Lock()
+	p.metrics[key].(*prometheus.CounterVec).WithLabelValues(labels...).Inc()
+	p.mutex.Unlock()
 }
 
 // ResetCounter ...
-func (p PrometheusMetrics) ResetCounter(key string, labels ...string) {
-	m, ok := p.metrics.Load(key)
-
-	if !ok {
-		err := fmt.Errorf("Panicking, could not retrieve metric %s", key)
-		p.log.Error(err, "Error occurred while incrementing metric counter")
-		panic(err.Error())
-	}
-	m.(*prometheus.CounterVec).Reset()
+func (p *PrometheusMetrics) ResetCounter(key string, labels ...string) {
+	p.mutex.Lock()
+	p.metrics[key].(*prometheus.CounterVec).Reset()
+	p.mutex.Unlock()
 }
 
 // SetGauge ...
-func (p PrometheusMetrics) SetGauge(key string, value float64, labels ...string) {
-	m, ok := p.metrics.Load(key)
-
-	if !ok {
-		err := fmt.Errorf("Panicking, could not retrieve metric %s", key)
-		p.log.Error(err, "Error occurred while incrementing metric counter")
-		panic(err.Error())
-	}
-	m.(*prometheus.GaugeVec).WithLabelValues(labels...).Set(value)
+func (p *PrometheusMetrics) SetGauge(key string, value float64, labels ...string) {
+	p.mutex.Lock()
+	p.metrics[key].(*prometheus.GaugeVec).WithLabelValues(labels...).Set(value)
+	p.mutex.Unlock()
 }
 
 // DestroyMetrics ...
 func (p PrometheusMetrics) DestroyMetrics() {
-	p.metrics.Range(func(key interface{}, value interface{}) bool {
-		prometheus.Unregister(value.(prometheus.Collector))
-		p.metrics.Delete(key)
-		return true
-	})
+	p.mutex.Lock()
+	for _, v := range p.metrics {
+		prometheus.Unregister(v.(prometheus.Collector))
+	}
+	p.mutex.Unlock()
 }
