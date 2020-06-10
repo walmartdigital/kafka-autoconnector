@@ -309,6 +309,9 @@ var _ = Describe("Run Reconcile", func() {
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/total/count", 2).Times(1)
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/running/count", 0).Times(1)
 
+		fakeMetrics.EXPECT().SetGauge("totalNumTasks", float64(2), "default", "controller_essinkconnector", "amida.logging").Times(1)
+		fakeMetrics.EXPECT().SetGauge("numRunningTasks", float64(0), "default", "controller_essinkconnector", "amida.logging").Times(1)
+
 		fakeKafkaConnectClient.EXPECT().RestartConnector(essink.Spec.Config.Name).Return(
 			&statusResp,
 			nil,
@@ -407,6 +410,9 @@ var _ = Describe("Run Reconcile", func() {
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/total/count", 2).Times(1)
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/running/count", 0).Times(1)
 
+		fakeMetrics.EXPECT().SetGauge("totalNumTasks", float64(2), "default", "controller_essinkconnector", "amida.logging").Times(1)
+		fakeMetrics.EXPECT().SetGauge("numRunningTasks", float64(0), "default", "controller_essinkconnector", "amida.logging").Times(1)
+
 		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/0/restart").Return(
 			nil,
 			false,
@@ -440,6 +446,15 @@ var _ = Describe("Run Reconcile", func() {
 			0,
 			true,
 		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/lasthealthycheck").Return(
+			nil,
+			false,
+		).Times(1)
+
+		fakeMetrics.EXPECT().SetGauge("connectorUptime", float64(0), "default", "controller_essinkconnector", "amida.logging").Times(1)
+
+		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/lasthealthycheck", gomock.Any()).Times(1)
 
 		fakeK8sClient.EXPECT().Status().Return(
 			fakeK8sClient,
@@ -517,6 +532,9 @@ var _ = Describe("Run Reconcile", func() {
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/total/count", 2).Times(1)
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/running/count", 0).Times(1)
 
+		fakeMetrics.EXPECT().SetGauge("totalNumTasks", float64(2), "default", "controller_essinkconnector", "amida.logging").Times(1)
+		fakeMetrics.EXPECT().SetGauge("numRunningTasks", float64(0), "default", "controller_essinkconnector", "amida.logging").Times(1)
+
 		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/tasks/0/restart").Return(
 			5,
 			true,
@@ -546,6 +564,15 @@ var _ = Describe("Run Reconcile", func() {
 			0,
 			true,
 		).Times(1)
+
+		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/lasthealthycheck").Return(
+			nil,
+			false,
+		).Times(1)
+
+		fakeMetrics.EXPECT().SetGauge("connectorUptime", float64(0), "default", "controller_essinkconnector", "amida.logging").Times(1)
+
+		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/lasthealthycheck", gomock.Any()).Times(1)
 
 		fakeK8sClient.EXPECT().Status().Return(
 			fakeK8sClient,
@@ -626,6 +653,9 @@ var _ = Describe("Run Reconcile", func() {
 
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/total/count", 2).Times(1)
 		fakeCache.EXPECT().Store("/essinkconnector/connectors/amida.logging/tasks/running/count", 0).Times(1)
+
+		fakeMetrics.EXPECT().SetGauge("totalNumTasks", float64(2), "default", "controller_essinkconnector", "amida.logging").Times(1)
+		fakeMetrics.EXPECT().SetGauge("numRunningTasks", float64(0), "default", "controller_essinkconnector", "amida.logging").Times(1)
 
 		fakeCache.EXPECT().Load("/essinkconnector/connectors/amida.logging/restart").Return(
 			5,
