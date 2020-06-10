@@ -8,6 +8,7 @@ require (
 	github.com/golang/mock v1.4.3
 	github.com/google/go-cmp v0.4.0
 	github.com/google/ko v0.4.0 // indirect
+	github.com/gorilla/mux v1.7.3
 	github.com/mibk/dupl v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.12.0
 	github.com/onsi/gomega v1.9.0
