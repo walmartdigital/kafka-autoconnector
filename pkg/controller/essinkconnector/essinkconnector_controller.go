@@ -32,18 +32,19 @@ import (
 )
 
 var (
-	controllerName                  = "controller_essinkconnector"
-	log                             = logf.Log.WithName(controllerName)
-	kafkaConnectHost                = "192.168.64.5:30256"
-	connectorRestartCachePath       = "/essinkconnector/connectors/%s/restart"
-	taskRestartCachePath            = "/essinkconnector/connectors/%s/tasks/%d/restart"
-	connectorHardResetCachePath     = "/essinkconnector/connectors/%s/hardreset"
-	totalTasksCountCachePath        = "/essinkconnector/connectors/%s/tasks/total/count"
-	runningTasksCountCachePath      = "/essinkconnector/connectors/%s/tasks/running/count"
-	refreshFromKafkaConnectInterval = 5
-	maxConnectorRestarts            = 5
-	maxTaskRestarts                 = 5
-	maxConnectorHardResets          = 3
+	controllerName                     = "controller_essinkconnector"
+	log                                = logf.Log.WithName(controllerName)
+	kafkaConnectHost                   = "192.168.64.5:30256"
+	connectorLastHealthyCheckCachePath = "/essinkconnector/connectors/%s/lasthealthycheck"
+	connectorRestartCachePath          = "/essinkconnector/connectors/%s/restart"
+	taskRestartCachePath               = "/essinkconnector/connectors/%s/tasks/%d/restart"
+	connectorHardResetCachePath        = "/essinkconnector/connectors/%s/hardreset"
+	totalTasksCountCachePath           = "/essinkconnector/connectors/%s/tasks/total/count"
+	runningTasksCountCachePath         = "/essinkconnector/connectors/%s/tasks/running/count"
+	refreshFromKafkaConnectInterval    = 5
+	maxConnectorRestarts               = 5
+	maxTaskRestarts                    = 5
+	maxConnectorHardResets             = 3
 )
 
 func init() {
@@ -337,6 +338,27 @@ func (r *ReconcileESSinkConnector) RestartTask(connector *skynetv1alpha1.ESSinkC
 	return false, nil
 }
 
+// UpdateUptimeMetric ...
+func (r *ReconcileESSinkConnector) UpdateUptimeMetric(connector *skynetv1alpha1.ESSinkConnector, running bool) {
+	if !running {
+		r.Cache.Store(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config.Name), nil)
+		r.Metrics.SetGauge(string(metrics.ConnectorUptime), 0, connector.Namespace, controllerName, connector.Spec.Config.Name)
+	} else {
+		stored, ok := r.Cache.Load(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config.Name))
+
+		now := time.Now()
+		if !ok || stored == nil {
+			r.Metrics.SetGauge(string(metrics.ConnectorUptime), 0, connector.Namespace, controllerName, connector.Spec.Config.Name)
+		} else {
+			diff := now.Sub(stored.(time.Time))
+			seconds := float64(diff / time.Second)
+			log.Info(fmt.Sprintf("Updating uptime by %fs", seconds))
+			r.Metrics.AddToGauge(string(metrics.ConnectorUptime), seconds, connector.Namespace, controllerName, connector.Spec.Config.Name)
+		}
+		r.Cache.Store(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config.Name), now)
+	}
+}
+
 // CheckAndHealConnector ...
 func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alpha1.ESSinkConnector, kcc kafkaconnect.KafkaConnectClient) (bool, error) {
 	var healthy bool
@@ -357,7 +379,8 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 	r.Metrics.SetGauge(string(metrics.TotalNumTasks), float64(totalTaskCount), connector.Namespace, controllerName, connector.Spec.Config.Name)
 	r.Metrics.SetGauge(string(metrics.NumRunningTasks), float64(runningTasksCount), connector.Namespace, controllerName, connector.Spec.Config.Name)
 
-	if status.IsConnectorFailed() {
+	failed := status.IsConnectorFailed()
+	if failed {
 		connRestartThresholdReached, err := r.RestartConnector(connector, kcc)
 
 		if connRestartThresholdReached {
@@ -366,9 +389,11 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 			}
 			r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), 0)
 		}
-
 		return false, err
 	}
+
+	r.UpdateUptimeMetric(connector, !failed)
+
 	healthy = true
 	for i := 0; i < totalTaskCount; i++ {
 		failed, err := status.IsTaskFailed(i)
