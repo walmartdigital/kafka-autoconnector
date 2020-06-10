@@ -26,6 +26,7 @@ type Metrics interface {
 	IncrementCounter(string, ...string)
 	ResetCounter(string, ...string)
 	SetGauge(string, float64, ...string)
+	AddToGauge(string, float64, ...string)
 	DestroyMetrics()
 }
 
@@ -111,6 +112,13 @@ func (p *PrometheusMetrics) ResetCounter(key string, labels ...string) {
 func (p *PrometheusMetrics) SetGauge(key string, value float64, labels ...string) {
 	p.mutex.Lock()
 	p.metrics[key].(*prometheus.GaugeVec).WithLabelValues(labels...).Set(value)
+	p.mutex.Unlock()
+}
+
+// AddToGauge ...
+func (p *PrometheusMetrics) AddToGauge(key string, value float64, labels ...string) {
+	p.mutex.Lock()
+	p.metrics[key].(*prometheus.GaugeVec).WithLabelValues(labels...).Add(value)
 	p.mutex.Unlock()
 }
 
