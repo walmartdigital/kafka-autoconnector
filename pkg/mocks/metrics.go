@@ -96,6 +96,23 @@ func (mr *MockMetricsMockRecorder) SetGauge(arg0, arg1 interface{}, arg2 ...inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetGauge", reflect.TypeOf((*MockMetrics)(nil).SetGauge), varargs...)
 }
 
+// AddToGauge mocks base method
+func (m *MockMetrics) AddToGauge(arg0 string, arg1 float64, arg2 ...string) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	m.ctrl.Call(m, "AddToGauge", varargs...)
+}
+
+// AddToGauge indicates an expected call of AddToGauge
+func (mr *MockMetricsMockRecorder) AddToGauge(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddToGauge", reflect.TypeOf((*MockMetrics)(nil).AddToGauge), varargs...)
+}
+
 // DestroyMetrics mocks base method
 func (m *MockMetrics) DestroyMetrics() {
 	m.ctrl.T.Helper()
