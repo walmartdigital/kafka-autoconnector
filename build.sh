@@ -34,11 +34,19 @@ temp=$(uuidgen | shasum | grep -oh '^\S*')
 dirty=$(git status --porcelain)
 if [ "$dirty" == "" ]
 then
-    commitHash="$(git rev-parse --short HEAD)"
+    if [[ $(git tag) ]]; then
+        imagetag="$(git describe --tags master)"
+    else
+        imagetag="$(git rev-parse --short HEAD)"
+    fi
 else
-    commitHash="$(git rev-parse --short HEAD)-dirty"
+    if [[ $(git tag) ]]; then
+        imagetag="$(git describe --tags master)-dirty"
+    else
+        imagetag="$(git rev-parse --short HEAD)-dirty"
+    fi
 fi
 
 operator-sdk build kafka-autoconnector:$temp
 imageid=$(docker images kafka-autoconnector:$temp -q)
-docker tag $imageid kafka-autoconnector:$commitHash
+docker tag $imageid kafka-autoconnector:$imagetag
