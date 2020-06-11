@@ -3,15 +3,13 @@ package kafkaconnectconfig
 import (
 	"context"
 
+	"github.com/redhat-cop/operator-utils/pkg/util"
+	"github.com/walmartdigital/go-kaya/pkg/kafkaconnect"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/walmartdigital/kafka-autoconnector/pkg/cache"
+	"github.com/walmartdigital/kafka-autoconnector/pkg/metrics"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -19,7 +17,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_kafkaconnectconfig")
+var (
+	controllerName = "controller_kafkaconnectconfig"
+	log            = logf.Log.WithName(controllerName)
+)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -28,13 +29,17 @@ var log = logf.Log.WithName("controller_kafkaconnectconfig")
 
 // Add creates a new KafkaConnectConfig Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, c cache.Cache, m metrics.Metrics, kcf kafkaconnect.KafkaConnectClientFactory) error {
+	return add(mgr, newReconciler(mgr, c, m))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileKafkaConnectConfig{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+func newReconciler(mgr manager.Manager, c cache.Cache, m metrics.Metrics) reconcile.Reconciler {
+	return &ReconcileKafkaConnectConfig{
+		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor(controllerName)),
+		Cache:          c,
+		Metrics:        m,
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -46,17 +51,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource KafkaConnectConfig
-	err = c.Watch(&source.Kind{Type: &skynetv1alpha1.KafkaConnectConfig{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner KafkaConnectConfig
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &skynetv1alpha1.KafkaConnectConfig{},
-	})
+	err = c.Watch(&source.Kind{Type: &skynetv1alpha1.KafkaConnectConfig{}}, &handler.EnqueueRequestForObject{}, util.ResourceGenerationOrFinalizerChangedPredicate{})
 	if err != nil {
 		return err
 	}
@@ -71,8 +66,9 @@ var _ reconcile.Reconciler = &ReconcileKafkaConnectConfig{}
 type ReconcileKafkaConnectConfig struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	util.ReconcilerBase
+	cache.Cache
+	metrics.Metrics
 }
 
 // Reconcile reads that state of the cluster for a KafkaConnectConfig object and makes changes based on the state read
@@ -88,7 +84,7 @@ func (r *ReconcileKafkaConnectConfig) Reconcile(request reconcile.Request) (reco
 
 	// Fetch the KafkaConnectConfig instance
 	instance := &skynetv1alpha1.KafkaConnectConfig{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.GetClient().Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -100,54 +96,5 @@ func (r *ReconcileKafkaConnectConfig) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
-
-	// Set KafkaConnectConfig instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
-}
-
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *skynetv1alpha1.KafkaConnectConfig) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
-	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
-	}
 }

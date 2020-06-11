@@ -3,6 +3,7 @@ module github.com/walmartdigital/kafka-autoconnector
 go 1.13
 
 require (
+	github.com/chinniehendrix/go-kaya v0.0.0-20200526040312-404214c43ac0
 	github.com/go-logr/logr v0.1.0
 	github.com/go-toolsmith/pkgload v1.0.0 // indirect
 	github.com/golang/mock v1.4.3
