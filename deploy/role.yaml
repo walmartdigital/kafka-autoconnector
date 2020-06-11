@@ -71,6 +71,8 @@ rules:
   resources:
   - '*'
   - essinkconnectors
+  - genericautoconnectors
+  - kafkaconnectconfigs
   verbs:
   - create
   - delete

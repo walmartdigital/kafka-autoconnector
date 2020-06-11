@@ -1,0 +1,7 @@
+apiVersion: skynet.walmartdigital.cl/v1alpha1
+kind: GenericAutoConnector
+metadata:
+  name: example-genericautoconnector
+spec:
+  # Add fields here
+  size: 3
