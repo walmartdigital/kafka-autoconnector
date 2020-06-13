@@ -904,6 +904,8 @@ github.com/walmartdigital/go-kaya v0.0.0-20200604152544-ca318cd5a275 h1:c+zUY0iA
 github.com/walmartdigital/go-kaya v0.0.0-20200604152544-ca318cd5a275/go.mod h1:ZsDxUXZ+/8u+hn4/0epo1M03KOH8m/3evIDGo7sn3JU=
 github.com/walmartdigital/go-kaya v0.0.0-20200604201112-6c5f7cd2352c h1:DuLxgrKzx8dwIoD4njP9X5dH7Adad+bah5cE/htFAmo=
 github.com/walmartdigital/go-kaya v0.0.0-20200604201112-6c5f7cd2352c/go.mod h1:ZsDxUXZ+/8u+hn4/0epo1M03KOH8m/3evIDGo7sn3JU=
+github.com/walmartdigital/go-kaya v0.0.0-20200613150129-8d292788674c h1:qrVk7GrzOWJDfABDajhDt0ho3GaZoZmAoJ04eaVLbPo=
+github.com/walmartdigital/go-kaya v0.0.0-20200613150129-8d292788674c/go.mod h1:ZsDxUXZ+/8u+hn4/0epo1M03KOH8m/3evIDGo7sn3JU=
 github.com/walmartdigital/go-kaya v0.0.2/go.mod h1:EjbnORLIUYuD1LX+d5Pv9jvdF717XWjm5e2xrLWYzG8=
 github.com/walmartdigital/go-kaya v0.0.3 h1:X1KGK81ZysmYUpCHsxvb9mou1w2VhMPbQq4V9Xu54aw=
 github.com/walmartdigital/go-kaya v0.0.3/go.mod h1:PLpsMvBHr2l3IZTDDztRW3gs777Rl/wM4v6xLtAwkIA=

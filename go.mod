@@ -20,7 +20,7 @@ require (
 	github.com/redhat-cop/operator-utils v0.2.4
 	github.com/securego/gosec v0.0.0-20200401082031-e946c8c39989 // indirect
 	github.com/spf13/pflag v1.0.5
-	github.com/walmartdigital/go-kaya v0.0.0-20200604201112-6c5f7cd2352c
+	github.com/walmartdigital/go-kaya v0.0.0-20200613150129-8d292788674c
 	go.uber.org/zap v1.15.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/tools v0.0.0-20200601175630-2caf76543d99 // indirect
