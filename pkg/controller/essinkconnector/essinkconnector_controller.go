@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"reflect"
 	"strconv"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/walmartdigital/go-kaya/pkg/client"
 	"github.com/walmartdigital/go-kaya/pkg/kafkaconnect"
@@ -213,7 +213,7 @@ func (r *ReconcileESSinkConnector) Reconcile(request reconcile.Request) (reconci
 // HardResetConnector ...
 func (r *ReconcileESSinkConnector) HardResetConnector(connector *skynetv1alpha1.ESSinkConnector, kcc kafkaconnect.KafkaConnectClient) error {
 	var connectorHardResetCount int
-	value, ok := r.Cache.Load(fmt.Sprintf(connectorHardResetCachePath, connector.Spec.Config.Name))
+	value, ok := r.Cache.Load(fmt.Sprintf(connectorHardResetCachePath, connector.Spec.Config["name"]))
 
 	if ok {
 		connectorHardResetCount = value.(int)
@@ -222,34 +222,34 @@ func (r *ReconcileESSinkConnector) HardResetConnector(connector *skynetv1alpha1.
 	}
 
 	if connectorHardResetCount < maxConnectorHardResets {
-		resp0, err0 := kcc.Delete(connector.Spec.Config.Name)
+		resp0, err0 := kcc.Delete(connector.Spec.Config["name"])
 
 		if err0 != nil {
-			log.Error(err0, fmt.Sprintf("Failed to delete connector %s", connector.Spec.Config.Name))
+			log.Error(err0, fmt.Sprintf("Failed to delete connector %s", connector.Spec.Config["name"]))
 			return err0
 		}
 
 		if resp0.Result == "success" {
-			log.Error(err0, fmt.Sprintf("Successfully deleted connector %s", connector.Spec.Config.Name))
+			log.Error(err0, fmt.Sprintf("Successfully deleted connector %s", connector.Spec.Config["name"]))
 			conObj := kafkaconnect.Connector{
-				Name:   connector.Spec.Config.Name,
-				Config: &connector.Spec.Config,
+				Name:   connector.Spec.Config["name"],
+				Config: connector.Spec.Config,
 			}
 
 			resp1, err1 := kcc.Create(conObj)
 
 			if err0 != nil {
-				log.Error(err1, fmt.Sprintf("Failed to recreate connector %s", connector.Spec.Config.Name))
+				log.Error(err1, fmt.Sprintf("Failed to recreate connector %s", connector.Spec.Config["name"]))
 				return err1
 			}
 
 			if resp1.Result == "success" {
 				connectorHardResetCount++
-				r.Cache.Store(fmt.Sprintf(connectorHardResetCachePath, connector.Spec.Config.Name), connectorHardResetCount)
-				log.Info(fmt.Sprintf("Hard reset count for connector %s is now %d", connector.Spec.Config.Name, connectorHardResetCount))
+				r.Cache.Store(fmt.Sprintf(connectorHardResetCachePath, connector.Spec.Config["name"]), connectorHardResetCount)
+				log.Info(fmt.Sprintf("Hard reset count for connector %s is now %d", connector.Spec.Config["name"], connectorHardResetCount))
 				return nil
 			}
-			return fmt.Errorf("Failed to recreate connector %s", connector.Spec.Config.Name)
+			return fmt.Errorf("Failed to recreate connector %s", connector.Spec.Config["name"])
 		}
 	}
 	return nil
@@ -259,7 +259,7 @@ func (r *ReconcileESSinkConnector) HardResetConnector(connector *skynetv1alpha1.
 // whether the maxConnectorRestarts was reached and hard-reset was successfully performed. Returns an error if connector restart or hard-reset fails.
 func (r *ReconcileESSinkConnector) RestartConnector(connector *skynetv1alpha1.ESSinkConnector, kcc kafkaconnect.KafkaConnectClient) (bool, error) {
 	var connectorRestartCount int
-	value, ok := r.Cache.Load(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name))
+	value, ok := r.Cache.Load(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config["name"]))
 
 	if ok {
 		connectorRestartCount = value.(int)
@@ -268,7 +268,7 @@ func (r *ReconcileESSinkConnector) RestartConnector(connector *skynetv1alpha1.ES
 			err := r.HardResetConnector(connector, kcc)
 
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Failed to hard-reset connector %s", connector.Spec.Config.Name))
+				log.Error(err, fmt.Sprintf("Failed to hard-reset connector %s", connector.Spec.Config["name"]))
 				return false, err
 			}
 			return true, nil
@@ -277,8 +277,8 @@ func (r *ReconcileESSinkConnector) RestartConnector(connector *skynetv1alpha1.ES
 		connectorRestartCount = 0
 	}
 
-	log.Info(fmt.Sprintf("Restarting failed connector %s", connector.Spec.Config.Name))
-	response, error := kcc.RestartConnector(connector.Spec.Config.Name)
+	log.Info(fmt.Sprintf("Restarting failed connector %s", connector.Spec.Config["name"]))
+	response, error := kcc.RestartConnector(connector.Spec.Config["name"])
 
 	if error != nil {
 		return false, error
@@ -286,33 +286,33 @@ func (r *ReconcileESSinkConnector) RestartConnector(connector *skynetv1alpha1.ES
 
 	if response.Result == "success" {
 		connectorRestartCount++
-		r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), connectorRestartCount)
-		log.Info(fmt.Sprintf("Restart count for connector %s is now %d", connector.Spec.Config.Name, connectorRestartCount))
+		r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config["name"]), connectorRestartCount)
+		log.Info(fmt.Sprintf("Restart count for connector %s is now %d", connector.Spec.Config["name"], connectorRestartCount))
 		return false, nil
 	}
-	return false, fmt.Errorf("Error occurred restarting connector %s", connector.Spec.Config.Name)
+	return false, fmt.Errorf("Error occurred restarting connector %s", connector.Spec.Config["name"])
 }
 
 // RestartTask restarts a task given a taskID. If the maxTaskRestarts count has been reached, then it restarts the connector and returns a boolean indicating
 // whether the threshold has been met. Returns an error if it fails to restart the task or the connector.
 func (r *ReconcileESSinkConnector) RestartTask(connector *skynetv1alpha1.ESSinkConnector, taskID int, kcc kafkaconnect.KafkaConnectClient) (bool, error) {
 	var taskRestartCount int
-	value, ok := r.Cache.Load(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, taskID))
+	value, ok := r.Cache.Load(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config["name"], taskID))
 
 	if ok {
 		taskRestartCount = value.(int)
 
 		if taskRestartCount >= maxTaskRestarts {
-			log.Info(fmt.Sprintf("Task %d for connector %s has reached failure threshold", taskID, connector.Spec.Config.Name))
+			log.Info(fmt.Sprintf("Task %d for connector %s has reached failure threshold", taskID, connector.Spec.Config["name"]))
 			thresholdReached, err := r.RestartConnector(connector, kcc)
 
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Failed to restart connector %s", connector.Spec.Config.Name))
+				log.Error(err, fmt.Sprintf("Failed to restart connector %s", connector.Spec.Config["name"]))
 				return false, err
 			}
 
 			if thresholdReached {
-				r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), 0)
+				r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config["name"]), 0)
 			}
 			return true, nil
 		}
@@ -320,20 +320,20 @@ func (r *ReconcileESSinkConnector) RestartTask(connector *skynetv1alpha1.ESSinkC
 		taskRestartCount = 0
 	}
 
-	log.Info(fmt.Sprintf("Failed task %d for connector %s is being restarted", taskID, connector.Spec.Config.Name))
-	response, error := kcc.RestartTask(connector.Spec.Config.Name, taskID)
+	log.Info(fmt.Sprintf("Failed task %d for connector %s is being restarted", taskID, connector.Spec.Config["name"]))
+	response, error := kcc.RestartTask(connector.Spec.Config["name"], taskID)
 
 	if error != nil {
-		log.Error(error, fmt.Sprintf("Failed to restart task %d for connector %s", taskID, connector.Spec.Config.Name))
+		log.Error(error, fmt.Sprintf("Failed to restart task %d for connector %s", taskID, connector.Spec.Config["name"]))
 		return false, error
 	}
 
 	if response.Result == "success" {
 		taskRestartCount++
-		r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, taskID), taskRestartCount)
-		log.Info(fmt.Sprintf("Restart count for task %d of connector %s is now %d", taskID, connector.Spec.Config.Name, taskRestartCount))
+		r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config["name"], taskID), taskRestartCount)
+		log.Info(fmt.Sprintf("Restart count for task %d of connector %s is now %d", taskID, connector.Spec.Config["name"], taskRestartCount))
 	} else {
-		return false, fmt.Errorf("Error occurred restarting task %d for connector %s", taskID, connector.Spec.Config.Name)
+		return false, fmt.Errorf("Error occurred restarting task %d for connector %s", taskID, connector.Spec.Config["name"])
 	}
 	return false, nil
 }
@@ -341,21 +341,21 @@ func (r *ReconcileESSinkConnector) RestartTask(connector *skynetv1alpha1.ESSinkC
 // UpdateUptimeMetric ...
 func (r *ReconcileESSinkConnector) UpdateUptimeMetric(connector *skynetv1alpha1.ESSinkConnector, running bool) {
 	if !running {
-		r.Cache.Store(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config.Name), nil)
-		r.Metrics.SetGauge(string(metrics.ConnectorUptime), 0, connector.Namespace, controllerName, connector.Spec.Config.Name)
+		r.Cache.Store(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config["name"]), nil)
+		r.Metrics.SetGauge(string(metrics.ConnectorUptime), 0, connector.Namespace, controllerName, connector.Spec.Config["name"])
 	} else {
-		stored, ok := r.Cache.Load(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config.Name))
+		stored, ok := r.Cache.Load(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config["name"]))
 
 		now := time.Now()
 		if !ok || stored == nil {
-			r.Metrics.SetGauge(string(metrics.ConnectorUptime), 0, connector.Namespace, controllerName, connector.Spec.Config.Name)
+			r.Metrics.SetGauge(string(metrics.ConnectorUptime), 0, connector.Namespace, controllerName, connector.Spec.Config["name"])
 		} else {
 			diff := now.Sub(stored.(time.Time))
 			seconds := float64(diff / time.Second)
 			log.Info(fmt.Sprintf("Updating uptime by %fs", seconds))
-			r.Metrics.AddToGauge(string(metrics.ConnectorUptime), seconds, connector.Namespace, controllerName, connector.Spec.Config.Name)
+			r.Metrics.AddToGauge(string(metrics.ConnectorUptime), seconds, connector.Namespace, controllerName, connector.Spec.Config["name"])
 		}
-		r.Cache.Store(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config.Name), now)
+		r.Cache.Store(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config["name"]), now)
 	}
 }
 
@@ -363,7 +363,7 @@ func (r *ReconcileESSinkConnector) UpdateUptimeMetric(connector *skynetv1alpha1.
 func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alpha1.ESSinkConnector, kcc kafkaconnect.KafkaConnectClient) (bool, error) {
 	var healthy bool
 
-	response, readErr := kcc.GetStatus(connector.Spec.Config.Name)
+	response, readErr := kcc.GetStatus(connector.Spec.Config["name"])
 
 	if readErr != nil {
 		return false, readErr
@@ -373,11 +373,11 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 
 	runningTasksCount := status.GetActiveTasksCount()
 	totalTaskCount := status.GetTaskCount()
-	r.Cache.Store(fmt.Sprintf(totalTasksCountCachePath, connector.Spec.Config.Name), totalTaskCount)
-	r.Cache.Store(fmt.Sprintf(runningTasksCountCachePath, connector.Spec.Config.Name), runningTasksCount)
+	r.Cache.Store(fmt.Sprintf(totalTasksCountCachePath, connector.Spec.Config["name"]), totalTaskCount)
+	r.Cache.Store(fmt.Sprintf(runningTasksCountCachePath, connector.Spec.Config["name"]), runningTasksCount)
 
-	r.Metrics.SetGauge(string(metrics.TotalNumTasks), float64(totalTaskCount), connector.Namespace, controllerName, connector.Spec.Config.Name)
-	r.Metrics.SetGauge(string(metrics.NumRunningTasks), float64(runningTasksCount), connector.Namespace, controllerName, connector.Spec.Config.Name)
+	r.Metrics.SetGauge(string(metrics.TotalNumTasks), float64(totalTaskCount), connector.Namespace, controllerName, connector.Spec.Config["name"])
+	r.Metrics.SetGauge(string(metrics.NumRunningTasks), float64(runningTasksCount), connector.Namespace, controllerName, connector.Spec.Config["name"])
 
 	failed := status.IsConnectorFailed()
 	if failed {
@@ -385,9 +385,9 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 
 		if connRestartThresholdReached {
 			for t := 0; t < totalTaskCount; t++ {
-				r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, t), 0)
+				r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config["name"], t), 0)
 			}
-			r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config.Name), 0)
+			r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config["name"]), 0)
 		}
 		return false, err
 	}
@@ -405,16 +405,16 @@ func (r *ReconcileESSinkConnector) CheckAndHealConnector(connector *skynetv1alph
 			thresholdReached, err := r.RestartTask(connector, i, kcc)
 
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Failed to restart task %d for connector %s", i, connector.Spec.Config.Name))
+				log.Error(err, fmt.Sprintf("Failed to restart task %d for connector %s", i, connector.Spec.Config["name"]))
 				return healthy, err
 			} else if thresholdReached {
 				for t := 0; t < totalTaskCount; t++ {
-					r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, t), 0)
+					r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config["name"], t), 0)
 				}
 				break
 			}
 		} else {
-			r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config.Name, i), 0)
+			r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config["name"], i), 0)
 		}
 	}
 	return healthy, nil
@@ -429,28 +429,26 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 		return errors.New("Object is not of type ESSinkConnector")
 	}
 
-	config := connector.Spec.Config
-
-	if config == (kafkaconnect.ConnectorConfig{}) {
+	if connector.Spec.Config == nil {
 		return errors.New("Could not get configuration from ESSinkConnector")
 	}
 
 	conObj := kafkaconnect.Connector{
-		Name:   connector.Spec.Config.Name,
-		Config: &connector.Spec.Config,
+		Name:   connector.Spec.Config["name"],
+		Config: connector.Spec.Config,
 	}
 
-	response, readErr := kcc.Read(config.Name)
-	log.Info(fmt.Sprintf("Reading connector %s from Kafka Connect", config.Name))
+	response, readErr := kcc.Read(connector.Spec.Config["name"])
+	log.Info(fmt.Sprintf("Reading connector %s from Kafka Connect", connector.Spec.Config["name"]))
 
 	if response.Result == "success" {
-		if !cmp.Equal(connector.Spec.Config, response.Payload, kafkaconnect.ConnectorConfigComparer) {
+		if !reflect.DeepEqual(connector.Spec.Config, response.Payload) {
 			resp, updateErr := kcc.Update(conObj)
 			if resp.Result == "success" {
-				log.Info(fmt.Sprintf("Connector %s already exists, updating configuration", config.Name))
+				log.Info(fmt.Sprintf("Connector %s already exists, updating configuration", connector.Spec.Config["name"]))
 				return nil
 			}
-			log.Error(updateErr, fmt.Sprintf("Error occurred updating configuration for connector %s", config.Name))
+			log.Error(updateErr, fmt.Sprintf("Error occurred updating configuration for connector %s", connector.Spec.Config["name"]))
 			return updateErr
 		}
 		healthy, err := r.CheckAndHealConnector(connector, kcc)
@@ -458,21 +456,21 @@ func (r *ReconcileESSinkConnector) ManageOperatorLogic(obj metav1.Object, kcc ka
 			return err
 		}
 		if healthy {
-			log.Info(fmt.Sprintf("Connector %s is healthy", config.Name))
+			log.Info(fmt.Sprintf("Connector %s is healthy", connector.Spec.Config["name"]))
 		} else {
-			log.Info(fmt.Sprintf("Connector %s is unhealthy, self-healing in progress", config.Name))
+			log.Info(fmt.Sprintf("Connector %s is unhealthy, self-healing in progress", connector.Spec.Config["name"]))
 		}
 	} else if response.Result == "notfound" {
-		log.Info(fmt.Sprintf("Connector %s not found", config.Name))
+		log.Info(fmt.Sprintf("Connector %s not found", connector.Spec.Config["name"]))
 		resp3, createErr := kcc.Create(conObj)
-		log.Info(fmt.Sprintf("Creating new connector %s", config.Name))
+		log.Info(fmt.Sprintf("Creating new connector %s", connector.Spec.Config["name"]))
 		if resp3.Result == "success" {
 			return nil
 		}
-		log.Error(createErr, fmt.Sprintf("Error occurred creating connector %s", config.Name))
+		log.Error(createErr, fmt.Sprintf("Error occurred creating connector %s", connector.Spec.Config["name"]))
 		return createErr
 	} else if readErr != nil {
-		log.Error(readErr, fmt.Sprintf("Error occurred reading connector %s", config.Name))
+		log.Error(readErr, fmt.Sprintf("Error occurred reading connector %s", connector.Spec.Config["name"]))
 		return readErr
 	}
 	return nil
@@ -483,6 +481,7 @@ func (r *ReconcileESSinkConnector) IsValid(obj metav1.Object) (bool, error) {
 	log.Info("Validating CR")
 
 	connector, ok := obj.(*skynetv1alpha1.ESSinkConnector)
+
 	v := validator.New()
 
 	if !ok {
@@ -490,11 +489,11 @@ func (r *ReconcileESSinkConnector) IsValid(obj metav1.Object) (bool, error) {
 	}
 	config := connector.Spec.Config
 
-	err := v.Struct(config)
-	if err != nil {
-		return false, err
+	if config == nil {
+		return false, fmt.Errorf("Invalid connector, configuration is nil")
 	}
-	return true, nil
+
+	return v.ValidateMap(config)
 }
 
 // IsInitialized ...
@@ -514,8 +513,8 @@ func (r *ReconcileESSinkConnector) IsInitialized(obj metav1.Object) bool {
 			initialized = false
 		}
 
-		if connector.Spec.Config.Name == "" {
-			connector.Spec.Config.Name = connector.ObjectMeta.Name + "_" + utils.RandSeq(8)
+		if connector.Spec.Config["name"] == "" {
+			connector.Spec.Config["name"] = connector.ObjectMeta.Name + "_" + utils.RandSeq(8)
 			return false
 		}
 	}
@@ -542,11 +541,11 @@ func (r *ReconcileESSinkConnector) ManageSuccess(obj metav1.Object) (reconcile.R
 	log.Info("Executing ManageSuccess")
 
 	if connector, updateStatus := obj.(*skynetv1alpha1.ESSinkConnector); updateStatus {
-		total, running := r.getTasksInfoFromCache(connector.Spec.Config.Name)
+		total, running := r.getTasksInfoFromCache(connector.Spec.Config["name"])
 
 		connector.Status = v1alpha1.ESSinkConnectorStatus{
-			ConnectorName: connector.Spec.Config.Name,
-			Topics:        connector.Spec.Config.Topics,
+			ConnectorName: connector.Spec.Config["name"],
+			Topics:        connector.Spec.Config["topics"],
 			Status:        "Running",
 			LastUpdate:    metav1.Now(),
 			Tasks:         fmt.Sprintf("%d/%d", running, total),
@@ -581,23 +580,21 @@ func (r *ReconcileESSinkConnector) ManageCleanUpLogic(obj metav1.Object, kcc kaf
 		return errors.New("Object is not of type ESSinkConnector")
 	}
 
-	config := connector.Spec.Config
-
-	if config == (kafkaconnect.ConnectorConfig{}) {
+	if connector.Spec.Config == nil {
 		return errors.New("Could not get configuration from ESSinkConnector")
 	}
 
-	if config.Name == "" {
+	if connector.Spec.Config["name"] == "" {
 		return errors.New("Connector name is not set")
 	}
 
-	response, err := kcc.Delete(config.Name)
+	response, err := kcc.Delete(connector.Spec.Config["name"])
 
 	if response.Result == "success" {
-		log.Info(fmt.Sprintf("Connector %s deleted successfully", config.Name))
+		log.Info(fmt.Sprintf("Connector %s deleted successfully", connector.Spec.Config["name"]))
 		return nil
 	}
-	log.Info(fmt.Sprintf("Failed to delete connector %s", config.Name))
+	log.Info(fmt.Sprintf("Failed to delete connector %s", connector.Spec.Config["name"]))
 	return err
 }
 
@@ -622,14 +619,14 @@ func (r *ReconcileESSinkConnector) ManageError(obj metav1.Object, issue error) (
 	r.GetRecorder().Event(runtimeObj, "Warning", "ProcessingError", issue.Error())
 
 	if connector, updateStatus := obj.(*skynetv1alpha1.ESSinkConnector); updateStatus {
-		total, running := r.getTasksInfoFromCache(connector.Spec.Config.Name)
+		total, running := r.getTasksInfoFromCache(connector.Spec.Config["name"])
 
 		lastUpdate := connector.Status.LastUpdate.Time
 		lastStatus := connector.Status.Status
 
 		connector.Status = v1alpha1.ESSinkConnectorStatus{
-			ConnectorName: connector.Spec.Config.Name,
-			Topics:        connector.Spec.Config.Topics,
+			ConnectorName: connector.Spec.Config["name"],
+			Topics:        connector.Spec.Config["topics"],
 			Tasks:         fmt.Sprintf("%d/%d", running, total),
 			LastUpdate:    metav1.Now(),
 			Reason:        issue.Error(),
