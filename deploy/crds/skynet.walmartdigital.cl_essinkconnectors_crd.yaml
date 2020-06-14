@@ -32,91 +32,12 @@ spec:
           description: ESSinkConnectorSpec defines the desired state of ESSinkConnector
           properties:
             connector.config:
+              additionalProperties:
+                type: string
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                 Important: Run "operator-sdk generate k8s" to regenerate code after
                 modifying this file Add custom validation using kubebuilder tags:
                 https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
-              properties:
-                batch.size:
-                  description: FlexInt ...
-                  type: integer
-                behavior.on.malformed.documents:
-                  type: string
-                connection.compression:
-                  description: FlexBool ...
-                  type: boolean
-                connection.password:
-                  type: string
-                connection.timeout.ms:
-                  description: FlexInt ...
-                  type: integer
-                connection.url:
-                  type: string
-                connection.username:
-                  type: string
-                connector.class:
-                  type: string
-                flush.timeout.ms:
-                  description: FlexInt ...
-                  type: integer
-                heartbeat.interval.ms:
-                  description: FlexInt ...
-                  type: integer
-                key.ignore:
-                  description: FlexBool ...
-                  type: boolean
-                linger.ms:
-                  description: FlexInt ...
-                  type: integer
-                max.buffered.records:
-                  description: FlexInt ...
-                  type: integer
-                max.in.flight.requests:
-                  description: FlexInt ...
-                  type: integer
-                max.retries:
-                  description: FlexInt ...
-                  type: integer
-                name:
-                  type: string
-                offset.flush.timeout.ms:
-                  description: FlexInt ...
-                  type: integer
-                read.timeout.ms:
-                  description: FlexInt ...
-                  type: integer
-                retry.backoff.ms:
-                  description: FlexInt ...
-                  type: integer
-                schema.ignore:
-                  description: FlexBool ...
-                  type: boolean
-                tasks.max:
-                  description: FlexInt ...
-                  type: integer
-                topic.index.map:
-                  type: string
-                topics:
-                  type: string
-                type:
-                  type: string
-                type.name:
-                  type: string
-                value.converter:
-                  type: string
-                value.converter.schemas.enable:
-                  description: FlexBool ...
-                  type: boolean
-              required:
-              - connection.compression
-              - connection.url
-              - connector.class
-              - key.ignore
-              - schema.ignore
-              - topic.index.map
-              - topics
-              - type.name
-              - value.converter.schemas.enable
               type: object
           required:
           - connector.config
