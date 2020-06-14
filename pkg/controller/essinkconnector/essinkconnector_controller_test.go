@@ -56,17 +56,17 @@ var _ = Describe("Run Reconcile", func() {
 		fakeCache = mocks.NewMockCache(ctrl)
 		fakeMetrics = mocks.NewMockMetrics(ctrl)
 
-		config := kafkaconnect.ConnectorConfig{
-			Name:                         "amida.logging",
-			ConnectorClass:               "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
-			DocumentType:                 "log",
-			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
-			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
-			BatchSize:                    100,
-			ConnectionURL:                "https://elasticsearch",
-			KeyIgnore:                    true,
-			SchemaIgnore:                 true,
-			BehaviorOnMalformedDocuments: "ignore",
+		config := map[string]string{
+			"name":                            "amida.logging",
+			"connector.class":                 "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+			"type.name":                       "log",
+			"topics":                          "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
+			"topic.index.map":                 "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
+			"batch.size":                      "100",
+			"connection.url":                  "https://elasticsearch",
+			"key.ignore":                      "true",
+			"schema.ignore":                   "true",
+			"behavior.on.malformed.documents": "ignore",
 		}
 
 		essink = &skynetv1alpha1.ESSinkConnector{
@@ -116,14 +116,14 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1)
 
 		conObj := kafkaconnect.Connector{
-			Name:   essink.Spec.Config.Name,
-			Config: &essink.Spec.Config,
+			Name:   essink.Spec.Config["name"],
+			Config: essink.Spec.Config,
 		}
 
 		resp1 := kafkaconnect.Response{
@@ -165,17 +165,17 @@ var _ = Describe("Run Reconcile", func() {
 			Name:      "blah",
 		}
 
-		newconfig := kafkaconnect.ConnectorConfig{
-			Name:                         "amida.logging",
-			ConnectorClass:               "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
-			DocumentType:                 "log",
-			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
-			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
-			BatchSize:                    100,
-			ConnectionURL:                "https://elasticsearch",
-			KeyIgnore:                    true,
-			SchemaIgnore:                 true,
-			BehaviorOnMalformedDocuments: "warn",
+		newconfig := map[string]string{
+			"name":                            "amida.logging",
+			"connector.class":                 "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+			"type.name":                       "log",
+			"topics":                          "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
+			"topic.index.map":                 "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
+			"batch.size":                      "100",
+			"connection.url":                  "https://elasticsearch",
+			"key.ignore":                      "true",
+			"schema.ignore":                   "true",
+			"behavior.on.malformed.documents": "warn",
 		}
 
 		newConnector := &skynetv1alpha1.ESSinkConnector{
@@ -204,14 +204,14 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1)
 
 		conObj := kafkaconnect.Connector{
-			Name:   newConnector.Spec.Config.Name,
-			Config: &newConnector.Spec.Config,
+			Name:   newConnector.Spec.Config["name"],
+			Config: newConnector.Spec.Config,
 		}
 
 		resp1 := kafkaconnect.Response{
@@ -296,12 +296,12 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().GetStatus(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().GetStatus(essink.Spec.Config["name"]).Return(
 			&statusResp,
 			nil,
 		).Times(1)
@@ -312,7 +312,7 @@ var _ = Describe("Run Reconcile", func() {
 		fakeMetrics.EXPECT().SetGauge("totalNumTasks", float64(2), "default", "controller_essinkconnector", "amida.logging").Times(1)
 		fakeMetrics.EXPECT().SetGauge("numRunningTasks", float64(0), "default", "controller_essinkconnector", "amida.logging").Times(1)
 
-		fakeKafkaConnectClient.EXPECT().RestartConnector(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().RestartConnector(essink.Spec.Config["name"]).Return(
 			&statusResp,
 			nil,
 		).Times(1)
@@ -397,12 +397,12 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().GetStatus(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().GetStatus(essink.Spec.Config["name"]).Return(
 			&statusResp,
 			nil,
 		).Times(1)
@@ -418,7 +418,7 @@ var _ = Describe("Run Reconcile", func() {
 			false,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().RestartTask(essink.Spec.Config.Name, 0).Return(
+		fakeKafkaConnectClient.EXPECT().RestartTask(essink.Spec.Config["name"], 0).Return(
 			&statusResp,
 			nil,
 		).Times(1)
@@ -430,7 +430,7 @@ var _ = Describe("Run Reconcile", func() {
 			false,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().RestartTask(essink.Spec.Config.Name, 1).Return(
+		fakeKafkaConnectClient.EXPECT().RestartTask(essink.Spec.Config["name"], 1).Return(
 			&statusResp,
 			nil,
 		).Times(1)
@@ -519,12 +519,12 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().GetStatus(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().GetStatus(essink.Spec.Config["name"]).Return(
 			&statusResp,
 			nil,
 		).Times(1)
@@ -545,7 +545,7 @@ var _ = Describe("Run Reconcile", func() {
 			false,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().RestartConnector(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().RestartConnector(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1)
@@ -619,8 +619,8 @@ var _ = Describe("Run Reconcile", func() {
 			},
 		}
 		conObj := kafkaconnect.Connector{
-			Name:   essink.Spec.Config.Name,
-			Config: &essink.Spec.Config,
+			Name:   essink.Spec.Config["name"],
+			Config: essink.Spec.Config,
 		}
 		statusResp := kafkaconnect.Response{
 			Result:  "success",
@@ -641,12 +641,12 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().GetStatus(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().GetStatus(essink.Spec.Config["name"]).Return(
 			&statusResp,
 			nil,
 		).Times(1)
@@ -667,7 +667,7 @@ var _ = Describe("Run Reconcile", func() {
 			false,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().Delete(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().Delete(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1)
@@ -734,7 +734,7 @@ var _ = Describe("Run Reconcile", func() {
 		resp := kafkaconnect.Response{
 			Result: "success",
 		}
-		fakeKafkaConnectClient.EXPECT().Delete(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().Delete(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1).Do(
@@ -753,18 +753,18 @@ var _ = Describe("Run Reconcile", func() {
 		_, _ = r.Reconcile(req)
 	})
 
-	It("should fail validation because ConnectorConfig is invalid", func() {
-		invalidconf := kafkaconnect.ConnectorConfig{
-			Name:                         "amida.logging",
-			ConnectorClass:               "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
-			DocumentType:                 "log",
-			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
-			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
-			BatchSize:                    100,
-			ConnectionURL:                "https://elasticsearch",
-			KeyIgnore:                    true,
-			SchemaIgnore:                 true,
-			BehaviorOnMalformedDocuments: "invalid",
+	It("should fail validation because ConnectorConfig is invalid (because 'connector.class' field is absent)", func() {
+		invalidconf := map[string]string{
+			"name": "amida.logging",
+			// "connector.class":                 "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+			"type.name":                       "log",
+			"topics":                          "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
+			"topic.index.map":                 "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
+			"batch.size":                      "100",
+			"connection.url":                  "https://elasticsearch",
+			"key.ignore":                      "true",
+			"schema.ignore":                   "true",
+			"behavior.on.malformed.documents": "warn",
 		}
 
 		name := types.NamespacedName{
@@ -833,14 +833,14 @@ var _ = Describe("Run Reconcile", func() {
 			nil,
 		).Times(1)
 
-		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config.Name).Return(
+		fakeKafkaConnectClient.EXPECT().Read(essink.Spec.Config["name"]).Return(
 			&resp,
 			nil,
 		).Times(1)
 
 		conObj := kafkaconnect.Connector{
-			Name:   essink.Spec.Config.Name,
-			Config: &essink.Spec.Config,
+			Name:   essink.Spec.Config["name"],
+			Config: essink.Spec.Config,
 		}
 
 		resp1 := kafkaconnect.Response{
@@ -879,17 +879,17 @@ var _ = Describe("Run Reconcile", func() {
 	})
 
 	It("should call the Update function because the ESSinkConnector CR is not initialized yet", func() {
-		notinitialized := kafkaconnect.ConnectorConfig{
+		notinitialized := map[string]string{
 			// Name is absent, this qualifies as "not initialized"
-			ConnectorClass:               "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
-			DocumentType:                 "log",
-			Topics:                       "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
-			TopicIndexMap:                "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
-			BatchSize:                    100,
-			ConnectionURL:                "https://elasticsearch",
-			KeyIgnore:                    true,
-			SchemaIgnore:                 true,
-			BehaviorOnMalformedDocuments: "ignore",
+			"connector.class":                 "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+			"type.name":                       "log",
+			"topics":                          "dumblogger-logs,_ims.logs,_amida.logs,_osiris.logs,_midas.logs,_kimun.logs",
+			"topic.index.map":                 "dumblogger-logs:<logs-pd-dumblogger-{now/d}>,_ims.logs:<logs-pd-ims-{now/d}>,_amida.logs:<logs-pd-amida-{now/d}>,_osiris.logs:<logs-pd-osiris-{now/d}>,_midas.logs:<logs-pd-midas-{now/d}>,_kimun.logs:<logs-pd-kimun-{now/d}>",
+			"batch.size":                      "100",
+			"connection.url":                  "https://elasticsearch",
+			"key.ignore":                      "true",
+			"schema.ignore":                   "true",
+			"behavior.on.malformed.documents": "ignore",
 		}
 
 		name := types.NamespacedName{
