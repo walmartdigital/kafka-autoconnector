@@ -12,6 +12,10 @@ type KafkaConnectConfigSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	KafkaConnectAddress    string `json:"kafka.connect.addr"`
+	MaxTaskRestarts        int    `json:"max.task.restarts"`
+	MaxConnectorRestarts   int    `json:"max.connector.restarts"`
+	MaxConnectorHardResets int    `json:"max.connector.hard.resets"`
 }
 
 // KafkaConnectConfigStatus defines the observed state of KafkaConnectConfig
