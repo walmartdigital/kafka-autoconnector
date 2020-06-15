@@ -78,3 +78,4 @@ tags
 test.sh
 sandbox/
 secrets.txt
+genericconnector_*.yaml
