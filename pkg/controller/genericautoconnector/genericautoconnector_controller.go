@@ -461,7 +461,7 @@ func (r *ReconcileGenericAutoConnector) ManageOperatorLogic(obj metav1.Object, k
 			log.Info(fmt.Sprintf("Connector %s is unhealthy, self-healing in progress", connector.Spec.Config["name"]))
 		}
 	} else if response.Result == "notfound" {
-		log.Info(fmt.Sprintf("Connector %s not found", connector.Spec.Config["name"]))
+		log.Info(fmt.Sprintf("Connector %s not found, read returned error %s", connector.Spec.Config["name"], readErr.Error()))
 		resp3, createErr := kcc.Create(conObj)
 		log.Info(fmt.Sprintf("Creating new connector %s", connector.Spec.Config["name"]))
 		if resp3.Result == "success" {
