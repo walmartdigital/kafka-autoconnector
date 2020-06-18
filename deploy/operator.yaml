@@ -17,6 +17,8 @@ spec:
         - name: kafka-autoconnector
           # Replace this with the built image name
           image: kafka-autoconnector
+          args:
+            - '--zap-level=debug'
           command:
           - kafka-autoconnector
           env:

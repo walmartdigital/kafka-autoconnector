@@ -164,7 +164,7 @@ func (r *ReconcileGenericAutoConnector) Reconcile(request reconcile.Request) (re
 	}
 
 	if ok := r.IsInitialized(instance); !ok {
-		log.Info("CR has not been initialized yet")
+		log.Info(fmt.Sprintf("CR %s has not been initialized yet", instance.ObjectMeta.Name))
 		err := r.GetClient().Update(context.TODO(), instance)
 		if err != nil {
 			log.Error(err, "unable to update instance", "instance", instance)
@@ -185,7 +185,7 @@ func (r *ReconcileGenericAutoConnector) Reconcile(request reconcile.Request) (re
 	}
 
 	if util.IsBeingDeleted(instance) {
-		log.Info("CR is being deleted")
+		log.Info(fmt.Sprintf("CR is being deleted"), instance.ObjectMeta.Name)
 		if !util.HasFinalizer(instance, controllerName) {
 			return reconcile.Result{}, nil
 		}
@@ -246,7 +246,7 @@ func (r *ReconcileGenericAutoConnector) HardResetConnector(connector *skynetv1al
 			if resp1.Result == "success" {
 				connectorHardResetCount++
 				r.Cache.Store(fmt.Sprintf(connectorHardResetCachePath, connector.Spec.Config["name"]), connectorHardResetCount)
-				log.Info(fmt.Sprintf("Hard reset count for connector %s is now %d", connector.Spec.Config["name"], connectorHardResetCount))
+				log.V(1).Info(fmt.Sprintf("Hard reset count for connector %s is now %d", connector.Spec.Config["name"], connectorHardResetCount))
 				return nil
 			}
 			return fmt.Errorf("Failed to recreate connector %s", connector.Spec.Config["name"])
@@ -287,7 +287,7 @@ func (r *ReconcileGenericAutoConnector) RestartConnector(connector *skynetv1alph
 	if response.Result == "success" {
 		connectorRestartCount++
 		r.Cache.Store(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config["name"]), connectorRestartCount)
-		log.Info(fmt.Sprintf("Restart count for connector %s is now %d", connector.Spec.Config["name"], connectorRestartCount))
+		log.V(1).Info(fmt.Sprintf("Restart count for connector %s is now %d", connector.Spec.Config["name"], connectorRestartCount))
 		return false, nil
 	}
 	return false, fmt.Errorf("Error occurred restarting connector %s", connector.Spec.Config["name"])
@@ -303,7 +303,7 @@ func (r *ReconcileGenericAutoConnector) RestartTask(connector *skynetv1alpha1.Ge
 		taskRestartCount = value.(int)
 
 		if taskRestartCount >= maxTaskRestarts {
-			log.Info(fmt.Sprintf("Task %d for connector %s has reached failure threshold", taskID, connector.Spec.Config["name"]))
+			log.V(1).Info(fmt.Sprintf("Task %d for connector %s has reached failure threshold", taskID, connector.Spec.Config["name"]))
 			thresholdReached, err := r.RestartConnector(connector, kcc)
 
 			if err != nil {
@@ -331,7 +331,7 @@ func (r *ReconcileGenericAutoConnector) RestartTask(connector *skynetv1alpha1.Ge
 	if response.Result == "success" {
 		taskRestartCount++
 		r.Cache.Store(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config["name"], taskID), taskRestartCount)
-		log.Info(fmt.Sprintf("Restart count for task %d of connector %s is now %d", taskID, connector.Spec.Config["name"], taskRestartCount))
+		log.V(1).Info(fmt.Sprintf("Restart count for task %d of connector %s is now %d", taskID, connector.Spec.Config["name"], taskRestartCount))
 	} else {
 		return false, fmt.Errorf("Error occurred restarting task %d for connector %s", taskID, connector.Spec.Config["name"])
 	}
@@ -352,7 +352,7 @@ func (r *ReconcileGenericAutoConnector) UpdateUptimeMetric(connector *skynetv1al
 		} else {
 			diff := now.Sub(stored.(time.Time))
 			seconds := float64(diff / time.Second)
-			log.Info(fmt.Sprintf("Updating uptime by %fs", seconds))
+			log.V(1).Info(fmt.Sprintf("Updating uptime by %fs", seconds))
 			r.Metrics.AddToGauge(string(metrics.ConnectorUptime), seconds, connector.Namespace, controllerName, connector.Spec.Config["name"])
 		}
 		r.Cache.Store(fmt.Sprintf(connectorLastHealthyCheckCachePath, connector.Spec.Config["name"]), now)
@@ -422,7 +422,7 @@ func (r *ReconcileGenericAutoConnector) CheckAndHealConnector(connector *skynetv
 
 // ManageOperatorLogic ...
 func (r *ReconcileGenericAutoConnector) ManageOperatorLogic(obj metav1.Object, kcc kafkaconnect.KafkaConnectClient) error {
-	log.Info("Calling ManageOperatorLogic")
+	log.V(1).Info("Calling ManageOperatorLogic")
 	connector, ok := obj.(*skynetv1alpha1.GenericAutoConnector)
 
 	if !ok {
@@ -439,7 +439,7 @@ func (r *ReconcileGenericAutoConnector) ManageOperatorLogic(obj metav1.Object, k
 	}
 
 	response, readErr := kcc.Read(connector.Spec.Config["name"])
-	log.Info(fmt.Sprintf("Reading connector %s from Kafka Connect", connector.Spec.Config["name"]))
+	log.V(1).Info(fmt.Sprintf("Reading connector %s from Kafka Connect", connector.Spec.Config["name"]))
 
 	if response.Result == "success" {
 		if !reflect.DeepEqual(connector.Spec.Config, response.Payload) {
@@ -459,7 +459,7 @@ func (r *ReconcileGenericAutoConnector) ManageOperatorLogic(obj metav1.Object, k
 			return err
 		}
 		if healthy {
-			log.Info(fmt.Sprintf("Connector %s is healthy", connector.Spec.Config["name"]))
+			log.V(1).Info(fmt.Sprintf("Connector %s is healthy", connector.Spec.Config["name"]))
 		} else {
 			log.Info(fmt.Sprintf("Connector %s is unhealthy, self-healing in progress", connector.Spec.Config["name"]))
 		}
@@ -484,9 +484,9 @@ func (r *ReconcileGenericAutoConnector) ManageOperatorLogic(obj metav1.Object, k
 
 // IsValid ...
 func (r *ReconcileGenericAutoConnector) IsValid(obj metav1.Object) (bool, error) {
-	log.Info("Validating CR")
-
 	connector, ok := obj.(*skynetv1alpha1.GenericAutoConnector)
+
+	log.V(1).Info(fmt.Sprintf("Validating CR %s", obj.GetName()))
 
 	v := validator.New()
 
@@ -504,14 +504,15 @@ func (r *ReconcileGenericAutoConnector) IsValid(obj metav1.Object) (bool, error)
 
 // IsInitialized ...
 func (r *ReconcileGenericAutoConnector) IsInitialized(obj metav1.Object) bool {
-	log.Info("Checking if CR is initialized")
 	initialized := true
 
 	connector, ok := obj.(*skynetv1alpha1.GenericAutoConnector)
 
+	log.Info(fmt.Sprintf("Checking if CR %s is initialized", obj.GetName()))
+
 	if !ok {
 		initialized = false
-		log.Info("Could not retrieve GenericAutoConnector")
+		log.Error(errors.New("Type assertion error from metav1.Object to GenericAutoConnector"), fmt.Sprintf("Could not retrieve GenericAutoConnector %s", obj.GetName()))
 	} else {
 		if !util.HasFinalizer(connector, controllerName) {
 			log.Info("Adding finalizer to GenericAutoConnector")
@@ -544,7 +545,7 @@ func (r *ReconcileGenericAutoConnector) getTasksInfoFromCache(name string) (int,
 
 // ManageSuccess ...
 func (r *ReconcileGenericAutoConnector) ManageSuccess(obj metav1.Object) (reconcile.Result, error) {
-	log.Info("Executing ManageSuccess")
+	log.V(1).Info("Executing ManageSuccess")
 
 	if connector, updateStatus := obj.(*skynetv1alpha1.GenericAutoConnector); updateStatus {
 		total, running := r.getTasksInfoFromCache(connector.Spec.Config["name"])
@@ -566,7 +567,7 @@ func (r *ReconcileGenericAutoConnector) ManageSuccess(obj metav1.Object) (reconc
 			}, nil
 		}
 	} else {
-		log.Info("object is not ReconcileStatusAware, not setting status")
+		log.Error(errors.New("Type assertion error from metav1.Object to GenericAutoConnector"), "Object is not GenericAutoConnector, not setting status")
 	}
 
 	// TODO: If maxConnectorHardReset has been reached, the Status should be set to failed
@@ -579,7 +580,7 @@ func (r *ReconcileGenericAutoConnector) ManageSuccess(obj metav1.Object) (reconc
 
 // ManageCleanUpLogic ...
 func (r *ReconcileGenericAutoConnector) ManageCleanUpLogic(obj metav1.Object, kcc kafkaconnect.KafkaConnectClient) error {
-	log.Info("Running clean up logic on GenericAutoConnector")
+	log.V(1).Info("Running clean up logic on GenericAutoConnector")
 	connector, ok := obj.(*skynetv1alpha1.GenericAutoConnector)
 
 	if !ok {
@@ -600,13 +601,13 @@ func (r *ReconcileGenericAutoConnector) ManageCleanUpLogic(obj metav1.Object, kc
 		log.Info(fmt.Sprintf("Connector %s deleted successfully", connector.Spec.Config["name"]))
 		return nil
 	}
-	log.Info(fmt.Sprintf("Failed to delete connector %s", connector.Spec.Config["name"]))
+	log.Error(err, fmt.Sprintf("Failed to delete connector %s", connector.Spec.Config["name"]))
 	return err
 }
 
 // ManageError ...
 func (r *ReconcileGenericAutoConnector) ManageError(obj metav1.Object, issue error) (reconcile.Result, error) {
-	log.Info("Calling ManageError")
+	log.V(1).Info("Calling ManageError")
 
 	//TODO: What is an error condition in the case of an GenericAutoConnector?
 	// A number of active tasks that is less than a certain threshold relative to the max number of tasks
@@ -655,7 +656,7 @@ func (r *ReconcileGenericAutoConnector) ManageError(obj metav1.Object, issue err
 			retryInterval = connector.Status.LastUpdate.Sub(lastUpdate).Round(time.Second)
 		}
 	} else {
-		log.Info("object is not ReconcileStatusAware, not setting status")
+		log.Error(errors.New("Type assertion error from metav1.Object to GenericAutoConnector"), "Object is not ReconcileStatusAware, not setting status")
 		retryInterval = time.Second
 	}
 
