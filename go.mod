@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.5.1
 	github.com/redhat-cop/operator-utils v0.2.4
 	github.com/spf13/pflag v1.0.5
-	github.com/walmartdigital/go-kaya v0.0.0-20200615161302-19755e9a6416
+	github.com/walmartdigital/go-kaya v0.0.0-20200617215450-74272ffa9e0f
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/tools v0.0.0-20200601175630-2caf76543d99 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
