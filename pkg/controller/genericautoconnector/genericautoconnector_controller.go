@@ -185,7 +185,7 @@ func (r *ReconcileGenericAutoConnector) Reconcile(request reconcile.Request) (re
 	}
 
 	if util.IsBeingDeleted(instance) {
-		log.Info(fmt.Sprintf("CR is being deleted"), instance.ObjectMeta.Name)
+		log.Info(fmt.Sprintf("CR %s is being deleted", instance.ObjectMeta.Name))
 		if !util.HasFinalizer(instance, controllerName) {
 			return reconcile.Result{}, nil
 		}
