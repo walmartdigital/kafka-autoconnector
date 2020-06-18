@@ -118,7 +118,7 @@ var _ = Describe("Run Reconcile", func() {
 
 		fakeKafkaConnectClient.EXPECT().Read(generic.Spec.Config["name"]).Return(
 			&resp,
-			nil,
+			errors.New("Connector not found"),
 		).Times(1)
 
 		conObj := kafkaconnect.Connector{
@@ -835,7 +835,7 @@ var _ = Describe("Run Reconcile", func() {
 
 		fakeKafkaConnectClient.EXPECT().Read(generic.Spec.Config["name"]).Return(
 			&resp,
-			nil,
+			errors.New("Connector not found"),
 		).Times(1)
 
 		conObj := kafkaconnect.Connector{
