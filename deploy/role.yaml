@@ -70,9 +70,7 @@ rules:
   - skynet.walmartdigital.cl
   resources:
   - '*'
-  - essinkconnectors
   - genericautoconnectors
-  - kafkaconnectconfigs
   verbs:
   - create
   - delete

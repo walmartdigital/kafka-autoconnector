@@ -1,7 +1,0 @@
-apiVersion: skynet.walmartdigital.cl/v1alpha1
-kind: KafkaConnectConfig
-metadata:
-  name: example-kafkaconnectconfig
-spec:
-  # Add fields here
-  size: 3

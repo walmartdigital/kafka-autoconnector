@@ -19,6 +19,4 @@ deploy:
     - deploy/role.yaml
     - deploy/service_account.yaml
     - deploy/crds/skynet.walmartdigital.cl_genericautoconnectors_crd.yaml
-    - deploy/crds/skynet.walmartdigital.cl_essinkconnectors_crd.yaml
-    - deploy/crds/skynet.walmartdigital.cl_kafkaconnectconfigs_crd.yaml
     - deploy/operator.yaml
