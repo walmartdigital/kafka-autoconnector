@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"reflect"
-	"strconv"
 	"time"
 
 	"github.com/redhat-cop/operator-utils/pkg/util"
@@ -17,6 +15,7 @@ import (
 	"github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	skynetv1alpha1 "github.com/walmartdigital/kafka-autoconnector/pkg/apis/skynet/v1alpha1"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/cache"
+	operatorconfig "github.com/walmartdigital/kafka-autoconnector/pkg/config"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/metrics"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -34,62 +33,13 @@ import (
 var (
 	controllerName                     = "controller_genericautoconnector"
 	log                                = logf.Log.WithName(controllerName)
-	kafkaConnectHost                   = "192.168.64.5:30256"
 	connectorLastHealthyCheckCachePath = "/genericautoconnector/connectors/%s/lasthealthycheck"
 	connectorRestartCachePath          = "/genericautoconnector/connectors/%s/restart"
 	taskRestartCachePath               = "/genericautoconnector/connectors/%s/tasks/%d/restart"
 	connectorHardResetCachePath        = "/genericautoconnector/connectors/%s/hardreset"
 	totalTasksCountCachePath           = "/genericautoconnector/connectors/%s/tasks/total/count"
 	runningTasksCountCachePath         = "/genericautoconnector/connectors/%s/tasks/running/count"
-	refreshFromKafkaConnectInterval    = 5
-	maxConnectorRestarts               = 5
-	maxTaskRestarts                    = 5
-	maxConnectorHardResets             = 3
 )
-
-func init() {
-	addr := os.Getenv("KAFKA_CONNECT_ADDR")
-	if addr != "" {
-		kafkaConnectHost = addr
-	}
-
-	interval := os.Getenv("REFRESH_INTERVAL")
-	if interval != "" {
-		val, err := strconv.Atoi(interval)
-		if err == nil {
-			refreshFromKafkaConnectInterval = val
-		}
-	}
-
-	connectorThreshold := os.Getenv("MAX_CONNECTOR_RESTARTS")
-	if connectorThreshold != "" {
-		val, err := strconv.Atoi(connectorThreshold)
-		if err == nil {
-			maxConnectorRestarts = val
-		}
-	}
-
-	taskThreshold := os.Getenv("MAX_TASK_RESTARTS")
-	if taskThreshold != "" {
-		val, err := strconv.Atoi(taskThreshold)
-		if err == nil {
-			maxTaskRestarts = val
-		}
-	}
-
-	hardReset := os.Getenv("MAX_CONNECT_HARD_RESETS")
-	if hardReset != "" {
-		val, err := strconv.Atoi(hardReset)
-		if err == nil {
-			maxConnectorHardResets = val
-		}
-	}
-}
-
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
 
 // Add creates a new GenericAutoConnector Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -177,10 +127,15 @@ func (r *ReconcileGenericAutoConnector) Reconcile(request reconcile.Request) (re
 		return r.ManageError(instance, err)
 	}
 
+	kafkaConnectHost, cacheErr := operatorconfig.GetKafkaConnectAddress(r.Cache)
+
+	if cacheErr != nil {
+		return reconcile.Result{}, cacheErr
+	}
+
 	kcc, err0 := r.KafkaConnectClientFactory.Create(kafkaConnectHost, client.RestyClientFactory{})
 
 	if err0 != nil {
-		// TODO: need to understand how to convey outcome as part of Result struct
 		return reconcile.Result{}, err0
 	}
 
@@ -214,6 +169,12 @@ func (r *ReconcileGenericAutoConnector) Reconcile(request reconcile.Request) (re
 func (r *ReconcileGenericAutoConnector) HardResetConnector(connector *skynetv1alpha1.GenericAutoConnector, kcc kafkaconnect.KafkaConnectClient) error {
 	var connectorHardResetCount int
 	value, ok := r.Cache.Load(fmt.Sprintf(connectorHardResetCachePath, connector.Spec.Config["name"]))
+
+	maxConnectorHardResets, cacheErr := operatorconfig.GetMaxConnectorHardResets(r.Cache)
+
+	if cacheErr != nil {
+		return cacheErr
+	}
 
 	if ok {
 		connectorHardResetCount = value.(int)
@@ -261,6 +222,12 @@ func (r *ReconcileGenericAutoConnector) RestartConnector(connector *skynetv1alph
 	var connectorRestartCount int
 	value, ok := r.Cache.Load(fmt.Sprintf(connectorRestartCachePath, connector.Spec.Config["name"]))
 
+	maxConnectorRestarts, cacheErr := operatorconfig.GetMaxConnectorRestarts(r.Cache)
+
+	if cacheErr != nil {
+		return false, cacheErr
+	}
+
 	if ok {
 		connectorRestartCount = value.(int)
 
@@ -298,6 +265,12 @@ func (r *ReconcileGenericAutoConnector) RestartConnector(connector *skynetv1alph
 func (r *ReconcileGenericAutoConnector) RestartTask(connector *skynetv1alpha1.GenericAutoConnector, taskID int, kcc kafkaconnect.KafkaConnectClient) (bool, error) {
 	var taskRestartCount int
 	value, ok := r.Cache.Load(fmt.Sprintf(taskRestartCachePath, connector.Spec.Config["name"], taskID))
+
+	maxTaskRestarts, cacheErr := operatorconfig.GetMaxTaskRestarts(r.Cache)
+
+	if cacheErr != nil {
+		return false, cacheErr
+	}
 
 	if ok {
 		taskRestartCount = value.(int)
@@ -568,6 +541,12 @@ func (r *ReconcileGenericAutoConnector) ManageSuccess(obj metav1.Object) (reconc
 		}
 	} else {
 		log.Error(errors.New("Type assertion error from metav1.Object to GenericAutoConnector"), "Object is not GenericAutoConnector, not setting status")
+	}
+
+	refreshFromKafkaConnectInterval, cacheErr := operatorconfig.GetReconcilePeriod(r.Cache)
+
+	if cacheErr != nil {
+		return reconcile.Result{}, cacheErr
 	}
 
 	// TODO: If maxConnectorHardReset has been reached, the Status should be set to failed

@@ -21,8 +21,8 @@ var (
 	maxTaskRestartsKey              = "/config/global/tasks/maxrestarts"
 )
 
-// CacheConfig ...
-func CacheConfig(configCache *configcache.Cache) {
+// LoadFromEnvironment ...
+func LoadFromEnvironment(configCache configcache.Cache) {
 	if configCache == nil {
 		panic(errors.New("Could not load config because cache is nil"))
 	}
@@ -64,9 +64,56 @@ func CacheConfig(configCache *configcache.Cache) {
 		}
 	}
 
-	(*configCache).Store(kafkaConnectAddrKey, kafkaConnectHost)
-	(*configCache).Store(reconcilePeriodKey, refreshFromKafkaConnectInterval)
-	(*configCache).Store(maxConnectorRestartsKey, maxConnectorRestarts)
-	(*configCache).Store(maxConnectorHardResetsKey, maxConnectorHardResets)
-	(*configCache).Store(maxTaskRestartsKey, kafkaConnectHost)
+	configCache.Store(kafkaConnectAddrKey, kafkaConnectHost)
+	configCache.Store(reconcilePeriodKey, refreshFromKafkaConnectInterval)
+	configCache.Store(maxConnectorRestartsKey, maxConnectorRestarts)
+	configCache.Store(maxConnectorHardResetsKey, maxConnectorHardResets)
+	configCache.Store(maxTaskRestartsKey, kafkaConnectHost)
+}
+
+// GetKafkaConnectAddress returns the KafkaConnect address stored in the provided cache
+func GetKafkaConnectAddress(configCache configcache.Cache) (string, error) {
+	addr, ok := configCache.Load(kafkaConnectAddrKey)
+	if !ok {
+		return "", errors.New("Could not retrieve KafkaConnect address from cache")
+	}
+	return addr.(string), nil
+}
+
+// GetReconcilePeriod returns the reconciliation interval stored in the provided cache
+func GetReconcilePeriod(configCache configcache.Cache) (int, error) {
+	addr, ok := configCache.Load(reconcilePeriodKey)
+	if !ok {
+		return -1, errors.New("Could not retrieve reconciliation interval from cache")
+	}
+	return addr.(int), nil
+}
+
+// GetMaxConnectorRestarts returns the maximum allowed connector restart count stored
+// in the provided cache
+func GetMaxConnectorRestarts(configCache configcache.Cache) (int, error) {
+	addr, ok := configCache.Load(maxConnectorRestartsKey)
+	if !ok {
+		return -1, errors.New("Could not retrieve maximum connector restart count from cache")
+	}
+	return addr.(int), nil
+}
+
+// GetMaxConnectorHardResets returns the maximum allowed connector hard reset count stored
+// in the provided cache
+func GetMaxConnectorHardResets(configCache configcache.Cache) (int, error) {
+	addr, ok := configCache.Load(maxConnectorHardResetsKey)
+	if !ok {
+		return -1, errors.New("Could not retrieve maximum connector hard reset count from cache")
+	}
+	return addr.(int), nil
+}
+
+// GetMaxTaskRestarts returns the maximum allowed task restart count stored in the provided cache
+func GetMaxTaskRestarts(configCache configcache.Cache) (int, error) {
+	addr, ok := configCache.Load(maxTaskRestartsKey)
+	if !ok {
+		return -1, errors.New("Could not retrieve maximum task restart count from cache")
+	}
+	return addr.(int), nil
 }

@@ -18,6 +18,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/apis"
+	operatorconfig "github.com/walmartdigital/kafka-autoconnector/pkg/config"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/controller"
 	"github.com/walmartdigital/kafka-autoconnector/version"
 
@@ -140,6 +141,8 @@ func main() {
 	controllerCache = controller_cache.NewInMemoryCache()
 	controllerMetrics := controller_metrics.NewPrometheusMetrics()
 
+	operatorconfig.LoadFromEnvironment(controllerCache)
+
 	// Create a new manager to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
@@ -183,9 +186,6 @@ func main() {
 	}
 	wg.Wait()
 }
-
-// func mainMetricsServer(wg *sync.WaitGroup) {
-// }
 
 // addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
 // the Prometheus operator
