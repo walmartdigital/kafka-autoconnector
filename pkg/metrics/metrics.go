@@ -64,7 +64,7 @@ func (p *PrometheusMetrics) InitMetrics() {
 	p.mutex.Lock()
 	p.metrics[string(TotalNumTasks)] = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "kafkautoconnector_total_connector_tasks",
+			Name: "kafka_autoconnector_total_connector_tasks",
 			Help: "Total number of connector tasks",
 		},
 		[]string{"ns", "rn", "connector_name"},
@@ -74,7 +74,7 @@ func (p *PrometheusMetrics) InitMetrics() {
 
 	p.metrics[string(NumRunningTasks)] = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "kafkautoconnector_running_connector_tasks",
+			Name: "kafka_autoconnector_running_connector_tasks",
 			Help: "Number of running connector tasks",
 		},
 		[]string{"ns", "rn", "connector_name"},
@@ -84,7 +84,7 @@ func (p *PrometheusMetrics) InitMetrics() {
 
 	p.metrics[string(ConnectorUptime)] = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "kafkautoconnector_connector_uptime",
+			Name: "kafka_autoconnector_connector_uptime",
 			Help: "Time that connector has been in RUNNING state",
 		},
 		[]string{"ns", "rn", "connector_name"},
