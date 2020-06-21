@@ -3,7 +3,10 @@ set -e
 
 # It is best to start Minikube with these settings -> minikube start --memory 12Gi --cpus=4
 # Requires Helm 3
-# Need to manually add Elastic repo -> helm repo add elastic https://helm.elastic.co
+# Need to manually add the following Helm repos
+# helm repo add elastic https://helm.elastic.co
+# helm repo add stable https://kubernetes-charts.storage.googleapis.com
+# helm repo update
 
 chart=$(helm list -o json | jq -r '[.[].name] | index("elasticsearch")')
 if [ "$chart" = "null" ]
@@ -23,6 +26,14 @@ else
     echo "Elasticsearch is already installed, do nothing"
 fi
 kubectl patch svc elasticsearch-master -p '{"spec": {"type": "NodePort"}}'
+
+chart=$(helm list -o json | jq -r '[.[].name] | index("prometheus")')
+if [ "$chart" = "null" ]
+then
+    helm install prometheus stable/prometheus-operator
+else
+    echo "Prometheus is already installed, do nothing"
+fi
 
 kubectl apply -f ./deploy/kafka-connect/zookeeper.yaml
 kubectl apply -f ./deploy/kafka-connect/kafka.yaml
