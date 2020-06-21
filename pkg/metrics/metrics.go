@@ -1,10 +1,28 @@
 package metrics
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
 	"sync"
 
-	"github.com/go-logr/logr"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	monclientv1 "github.com/coreos/prometheus-operator/pkg/client/versioned/typed/monitoring/v1"
+	"github.com/gorilla/mux"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
+	controller_http "github.com/walmartdigital/kafka-autoconnector/pkg/http"
+	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -18,6 +36,9 @@ var (
 	NumRunningTasks MetricsKey = "numRunningTasks"
 	// ConnectorUptime ...
 	ConnectorUptime MetricsKey = "connectorUptime"
+
+	componentName = "kafka_autoconnector_custom_metrics"
+	log           = logf.Log.WithName(componentName)
 )
 
 // Metrics ...
@@ -43,7 +64,6 @@ type PrometheusMetricsFactory struct {
 func NewPrometheusMetrics() *PrometheusMetrics {
 	obj := PrometheusMetrics{
 		metrics: make(map[string]interface{}),
-		log:     logf.Log.WithName(componentName),
 		mutex:   new(sync.Mutex),
 	}
 	obj.InitMetrics()
@@ -54,10 +74,8 @@ func NewPrometheusMetrics() *PrometheusMetrics {
 type PrometheusMetrics struct {
 	mutex   *sync.Mutex
 	metrics map[string]interface{}
-	log     logr.Logger
+	// log     logr.Logger
 }
-
-var componentName string = "kafka_autoconnector_custom_metrics"
 
 // InitMetrics ...
 func (p *PrometheusMetrics) InitMetrics() {
@@ -129,4 +147,291 @@ func (p PrometheusMetrics) DestroyMetrics() {
 		prometheus.Unregister(v.(prometheus.Collector))
 	}
 	p.mutex.Unlock()
+}
+
+// AddCustomMetrics ...
+func (p PrometheusMetrics) AddCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup) {
+	addCustomMetrics(ctx, cfg, wg)
+}
+
+func serveCustomMetrics(wg *sync.WaitGroup) error {
+	router := mux.NewRouter().StrictSlash(true)
+	routerWrapper := &controller_http.RouterWrapper{Router: router}
+	httpServer := &http.Server{Addr: ":10000", Handler: router}
+	metricsServer := controller_http.CreateServer(httpServer, routerWrapper)
+	log.Info("Starting the custom metrics server.")
+	go metricsServer.Run(wg)
+	return nil
+}
+
+// addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
+// the Prometheus operator
+func addCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup) {
+	// Get the namespace the operator is currently deployed in.
+	operatorNs, err := k8sutil.GetOperatorNamespace()
+	if err != nil {
+		if errors.Is(err, k8sutil.ErrRunLocal) {
+			log.Info("Skipping CR metrics server creation; not running in a cluster.")
+			return
+		}
+	}
+
+	if err := serveCustomMetrics(wg); err != nil {
+		log.Info("Could not generate and serve custom resource metrics", "error", err.Error())
+	}
+
+	// Add to the below struct any other metrics ports you want to expose.
+	servicePorts := []v1.ServicePort{
+		{Port: 10000, Name: "custom-metrics", Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: 10000}},
+	}
+
+	// Create Service object to expose the metrics port(s).
+	service, err := createCustomMetricsService(ctx, cfg, servicePorts)
+	if err != nil {
+		log.Info("Could not create metrics Service", "error", err.Error())
+	}
+
+	// CreateServiceMonitors will automatically create the prometheus-operator ServiceMonitor resources
+	// necessary to configure Prometheus to scrape metrics from this operator.
+	services := []*v1.Service{service}
+
+	// The ServiceMonitor is created in the same namespace where the operator is deployed
+	_, err = metrics.CreateServiceMonitors(cfg, operatorNs, services)
+	if err != nil {
+		log.Info("Could not create ServiceMonitor object", "error", err.Error())
+		// If this operator is deployed to a cluster without the prometheus-operator running, it will return
+		// ErrServiceMonitorNotPresent, which can be used to safely skip ServiceMonitor creation.
+		if err == metrics.ErrServiceMonitorNotPresent {
+			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects", "error", err.Error())
+		}
+	}
+}
+
+func createCustomMetricsService(ctx context.Context, cfg *rest.Config, servicePorts []v1.ServicePort) (*v1.Service, error) {
+	if len(servicePorts) < 1 {
+		return nil, fmt.Errorf("failed to create metrics Serice; service ports were empty")
+	}
+	client, err := crclient.New(cfg, crclient.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new client: %w", err)
+	}
+	s, err := initOperatorService(ctx, client, servicePorts)
+	if err != nil {
+		if err == k8sutil.ErrNoNamespace || err == k8sutil.ErrRunLocal {
+			log.Info("Skipping metrics Service creation; not running in a cluster.")
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to initialize service object for metrics: %w", err)
+	}
+	service, err := createOrUpdateService(ctx, client, s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create or get service for metrics: %w", err)
+	}
+	return service, nil
+}
+
+// initOperatorService returns the static service which exposes specified port(s).
+func initOperatorService(ctx context.Context, client crclient.Client, sp []v1.ServicePort) (*v1.Service, error) {
+	operatorName, err := k8sutil.GetOperatorName()
+	if err != nil {
+		return nil, err
+	}
+	namespace, err := k8sutil.GetOperatorNamespace()
+	if err != nil {
+		return nil, err
+	}
+	label := map[string]string{"name": operatorName}
+
+	service := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-custom-metrics", operatorName),
+			Namespace: namespace,
+			Labels:    label,
+		},
+		Spec: v1.ServiceSpec{
+			Ports:    sp,
+			Selector: label,
+		},
+	}
+
+	ownRef, err := getPodOwnerRef(ctx, client, namespace)
+	if err != nil {
+		return nil, err
+	}
+	service.SetOwnerReferences([]metav1.OwnerReference{*ownRef})
+	return service, nil
+}
+
+func getPodOwnerRef(ctx context.Context, client crclient.Client, ns string) (*metav1.OwnerReference, error) {
+	// Get current Pod the operator is running in
+	pod, err := k8sutil.GetPod(ctx, client, ns)
+	if err != nil {
+		return nil, err
+	}
+	podOwnerRefs := metav1.NewControllerRef(pod, pod.GroupVersionKind())
+	// Get Owner that the Pod belongs to
+	ownerRef := metav1.GetControllerOf(pod)
+	finalOwnerRef, err := findFinalOwnerRef(ctx, client, ns, ownerRef)
+	if err != nil {
+		return nil, err
+	}
+	if finalOwnerRef != nil {
+		return finalOwnerRef, nil
+	}
+
+	// Default to returning Pod as the Owner
+	return podOwnerRefs, nil
+}
+
+// findFinalOwnerRef tries to locate the final controller/owner based on the owner reference provided.
+func findFinalOwnerRef(ctx context.Context, client crclient.Client, ns string,
+	ownerRef *metav1.OwnerReference) (*metav1.OwnerReference, error) {
+	if ownerRef == nil {
+		return nil, nil
+	}
+
+	obj := &unstructured.Unstructured{}
+	obj.SetAPIVersion(ownerRef.APIVersion)
+	obj.SetKind(ownerRef.Kind)
+	err := client.Get(ctx, types.NamespacedName{Namespace: ns, Name: ownerRef.Name}, obj)
+	if err != nil {
+		return nil, err
+	}
+	newOwnerRef := metav1.GetControllerOf(obj)
+	if newOwnerRef != nil {
+		return findFinalOwnerRef(ctx, client, ns, newOwnerRef)
+	}
+
+	log.V(1).Info("Pods owner found", "Kind", ownerRef.Kind, "Name",
+		ownerRef.Name, "Namespace", ns)
+	return ownerRef, nil
+}
+
+func createOrUpdateService(ctx context.Context, client crclient.Client, s *v1.Service) (*v1.Service, error) {
+	if err := client.Create(ctx, s); err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return nil, err
+		}
+		// Service already exists, we want to update it
+		// as we do not know if any fields might have changed.
+		existingService := &v1.Service{}
+		err := client.Get(ctx, types.NamespacedName{
+			Name:      s.Name,
+			Namespace: s.Namespace,
+		}, existingService)
+		if err != nil {
+			return nil, err
+		}
+
+		s.ResourceVersion = existingService.ResourceVersion
+		if existingService.Spec.Type == v1.ServiceTypeClusterIP {
+			s.Spec.ClusterIP = existingService.Spec.ClusterIP
+		}
+		err = client.Update(ctx, s)
+		if err != nil {
+			return nil, err
+		}
+		log.Info("Metrics Service object updated", "Service.Name",
+			s.Name, "Service.Namespace", s.Namespace)
+		return s, nil
+	}
+
+	log.Info("Metrics Service object created", "Service.Name",
+		s.Name, "Service.Namespace", s.Namespace)
+	return s, nil
+}
+
+// ErrServiceMonitorNotPresent ...
+var ErrServiceMonitorNotPresent = fmt.Errorf("no ServiceMonitor registered with the API")
+
+// ServiceMonitorUpdater ...
+type ServiceMonitorUpdater func(*monitoringv1.ServiceMonitor) error
+
+// CreateServiceMonitors creates ServiceMonitors objects based on an array of Service objects.
+// If CR ServiceMonitor is not registered in the Cluster it will not attempt at creating resources.
+func CreateServiceMonitors(config *rest.Config, ns string, services []*v1.Service,
+	updaters ...ServiceMonitorUpdater) ([]*monitoringv1.ServiceMonitor, error) {
+	// check if we can even create ServiceMonitors
+	exists, err := hasServiceMonitor(config)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, ErrServiceMonitorNotPresent
+	}
+
+	var serviceMonitors []*monitoringv1.ServiceMonitor
+	mclient := monclientv1.NewForConfigOrDie(config)
+
+	for _, s := range services {
+		if s == nil {
+			continue
+		}
+		sm := GenerateServiceMonitor(s)
+		for _, update := range updaters {
+			if err := update(sm); err != nil {
+				return nil, err
+			}
+		}
+
+		smc, err := mclient.ServiceMonitors(ns).Create(sm)
+		if err != nil {
+			return serviceMonitors, err
+		}
+		serviceMonitors = append(serviceMonitors, smc)
+	}
+
+	return serviceMonitors, nil
+}
+
+// GenerateServiceMonitor generates a prometheus-operator ServiceMonitor object
+// based on the passed Service object.
+func GenerateServiceMonitor(s *v1.Service) *monitoringv1.ServiceMonitor {
+	labels := make(map[string]string)
+	for k, v := range s.ObjectMeta.Labels {
+		labels[k] = v
+	}
+	endpoints := populateEndpointsFromServicePorts(s)
+	boolTrue := true
+
+	return &monitoringv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      s.ObjectMeta.Name,
+			Namespace: s.ObjectMeta.Namespace,
+			Labels:    labels,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "v1",
+					BlockOwnerDeletion: &boolTrue,
+					Controller:         &boolTrue,
+					Kind:               "Service",
+					Name:               s.Name,
+					UID:                s.UID,
+				},
+			},
+		},
+		Spec: monitoringv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Endpoints: endpoints,
+		},
+	}
+}
+
+func populateEndpointsFromServicePorts(s *v1.Service) []monitoringv1.Endpoint {
+	var endpoints []monitoringv1.Endpoint
+	for _, port := range s.Spec.Ports {
+		endpoints = append(endpoints, monitoringv1.Endpoint{Port: port.Name})
+	}
+	return endpoints
+}
+
+// hasServiceMonitor checks if ServiceMonitor is registered in the cluster.
+func hasServiceMonitor(config *rest.Config) (bool, error) {
+	dc := discovery.NewDiscoveryClientForConfigOrDie(config)
+	apiVersion := "monitoring.coreos.com/v1"
+	kind := "ServiceMonitor"
+
+	return k8sutil.ResourceExists(dc, apiVersion, kind)
 }

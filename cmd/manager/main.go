@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -16,7 +15,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	"github.com/gorilla/mux"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/apis"
 	operatorconfig "github.com/walmartdigital/kafka-autoconnector/pkg/config"
 	"github.com/walmartdigital/kafka-autoconnector/pkg/controller"
@@ -40,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	controller_cache "github.com/walmartdigital/kafka-autoconnector/pkg/cache"
-	controller_http "github.com/walmartdigital/kafka-autoconnector/pkg/http"
 	controller_metrics "github.com/walmartdigital/kafka-autoconnector/pkg/metrics"
 )
 
@@ -167,15 +164,9 @@ func main() {
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
 
-	router := mux.NewRouter().StrictSlash(true)
-	routerWrapper := &controller_http.RouterWrapper{Router: router}
-	httpServer := &http.Server{Addr: ":10000", Handler: router}
-	metricsServer := controller_http.CreateServer(httpServer, routerWrapper)
-	log.Info("Starting the custom metrics server.")
-
 	wg = new(sync.WaitGroup)
 	wg.Add(1)
-	go metricsServer.Run(wg)
+	controllerMetrics.AddCustomMetrics(ctx, cfg, wg)
 
 	log.Info("Starting the Cmd.")
 
