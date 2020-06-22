@@ -14,14 +14,19 @@ var (
 	maxConnectorRestarts            = 5
 	maxTaskRestarts                 = 5
 	maxConnectorHardResets          = 3
-	kafkaConnectAddrKey             = "/config/global/kafkaconnect/address"
-	reconcilePeriodKey              = "/config/global/reconcile/period"
-	maxConnectorRestartsKey         = "/config/global/connectors/maxrestarts"
-	maxConnectorHardResetsKey       = "/config/global/connectors/maxhardresets"
-	maxTaskRestartsKey              = "/config/global/tasks/maxrestarts"
+	kafkaConnectAddrCacheKey        = "/config/global/kafkaconnect/address"
+	reconcilePeriodCacheKey         = "/config/global/reconcile/period"
+	maxConnectorRestartsCacheKey    = "/config/global/connectors/maxrestarts"
+	maxConnectorHardResetsCacheKey  = "/config/global/connectors/maxhardresets"
+	maxTaskRestartsCacheKey         = "/config/global/tasks/maxrestarts"
+	customMetricsPort               = 10000
+	customMetricsPortCacheKey       = "/config/global/metrics/port/number"
+	customMetricsPortName           = "custom-metrics"
+	customMetricsPortNameCacheKey   = "/config/global/metrics/port/name"
 )
 
-// LoadFromEnvironment ...
+// LoadFromEnvironment loads configuration parameters from environment variables and
+// store them in the provided cache
 func LoadFromEnvironment(configCache configcache.Cache) {
 	if configCache == nil {
 		panic(errors.New("Could not load config because cache is nil"))
@@ -64,25 +69,58 @@ func LoadFromEnvironment(configCache configcache.Cache) {
 		}
 	}
 
-	configCache.Store(kafkaConnectAddrKey, kafkaConnectHost)
-	configCache.Store(reconcilePeriodKey, refreshFromKafkaConnectInterval)
-	configCache.Store(maxConnectorRestartsKey, maxConnectorRestarts)
-	configCache.Store(maxConnectorHardResetsKey, maxConnectorHardResets)
-	configCache.Store(maxTaskRestartsKey, kafkaConnectHost)
+	port := os.Getenv("CUSTOM_METRICS_PORT")
+	if port != "" {
+		val, err := strconv.Atoi(port)
+		if err == nil {
+			customMetricsPort = val
+		}
+	}
+
+	portName := os.Getenv("CUSTOM_METRICS_PORT_NAME")
+	if portName != "" {
+		customMetricsPortName = portName
+	}
+
+	configCache.Store(kafkaConnectAddrCacheKey, kafkaConnectHost)
+	configCache.Store(reconcilePeriodCacheKey, refreshFromKafkaConnectInterval)
+	configCache.Store(maxConnectorRestartsCacheKey, maxConnectorRestarts)
+	configCache.Store(maxConnectorHardResetsCacheKey, maxConnectorHardResets)
+	configCache.Store(maxTaskRestartsCacheKey, kafkaConnectHost)
+	configCache.Store(customMetricsPortCacheKey, customMetricsPort)
+	configCache.Store(customMetricsPortNameCacheKey, customMetricsPortName)
 }
 
 // GetKafkaConnectAddress returns the KafkaConnect address stored in the provided cache
 func GetKafkaConnectAddress(configCache configcache.Cache) (string, error) {
-	addr, ok := configCache.Load(kafkaConnectAddrKey)
+	addr, ok := configCache.Load(kafkaConnectAddrCacheKey)
 	if !ok {
 		return "", errors.New("Could not retrieve KafkaConnect address from cache")
 	}
 	return addr.(string), nil
 }
 
+// GetCustomMetricsPortName returns the custom metrics port name stored in the provided cache
+func GetCustomMetricsPortName(configCache configcache.Cache) (string, error) {
+	name, ok := configCache.Load(customMetricsPortNameCacheKey)
+	if !ok {
+		return "", errors.New("Could not retrieve the custom metrics port name from cache")
+	}
+	return name.(string), nil
+}
+
+// GetCustomMetricsPort returns the custom metrics port in the provided cache
+func GetCustomMetricsPort(configCache configcache.Cache) (int, error) {
+	port, ok := configCache.Load(customMetricsPortCacheKey)
+	if !ok {
+		return -1, errors.New("Could not retrieve custom metrics port from cache")
+	}
+	return port.(int), nil
+}
+
 // GetReconcilePeriod returns the reconciliation interval stored in the provided cache
 func GetReconcilePeriod(configCache configcache.Cache) (int, error) {
-	addr, ok := configCache.Load(reconcilePeriodKey)
+	addr, ok := configCache.Load(reconcilePeriodCacheKey)
 	if !ok {
 		return -1, errors.New("Could not retrieve reconciliation interval from cache")
 	}
@@ -92,7 +130,7 @@ func GetReconcilePeriod(configCache configcache.Cache) (int, error) {
 // GetMaxConnectorRestarts returns the maximum allowed connector restart count stored
 // in the provided cache
 func GetMaxConnectorRestarts(configCache configcache.Cache) (int, error) {
-	addr, ok := configCache.Load(maxConnectorRestartsKey)
+	addr, ok := configCache.Load(maxConnectorRestartsCacheKey)
 	if !ok {
 		return -1, errors.New("Could not retrieve maximum connector restart count from cache")
 	}
@@ -102,7 +140,7 @@ func GetMaxConnectorRestarts(configCache configcache.Cache) (int, error) {
 // GetMaxConnectorHardResets returns the maximum allowed connector hard reset count stored
 // in the provided cache
 func GetMaxConnectorHardResets(configCache configcache.Cache) (int, error) {
-	addr, ok := configCache.Load(maxConnectorHardResetsKey)
+	addr, ok := configCache.Load(maxConnectorHardResetsCacheKey)
 	if !ok {
 		return -1, errors.New("Could not retrieve maximum connector hard reset count from cache")
 	}
@@ -111,7 +149,7 @@ func GetMaxConnectorHardResets(configCache configcache.Cache) (int, error) {
 
 // GetMaxTaskRestarts returns the maximum allowed task restart count stored in the provided cache
 func GetMaxTaskRestarts(configCache configcache.Cache) (int, error) {
-	addr, ok := configCache.Load(maxTaskRestartsKey)
+	addr, ok := configCache.Load(maxTaskRestartsCacheKey)
 	if !ok {
 		return -1, errors.New("Could not retrieve maximum task restart count from cache")
 	}

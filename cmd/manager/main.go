@@ -164,9 +164,24 @@ func main() {
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
 
+	customMetricsPort, err := operatorconfig.GetCustomMetricsPort(controllerCache)
+
+	if err != nil {
+		log.Error(err, "msg", "Initialization error loading custom metrics port")
+		panic(err)
+	}
+
+	customMetricsPortName, err := operatorconfig.GetCustomMetricsPortName(controllerCache)
+
+	if err != nil {
+		log.Error(err, "msg", "Initialization error loading custom metrics port name")
+		panic(err)
+	}
+
 	wg = new(sync.WaitGroup)
 	wg.Add(1)
-	controllerMetrics.AddCustomMetrics(ctx, cfg, wg)
+	log.V(1).Info(fmt.Sprintf("Calling AddCustomMetrics() with port: %d, portName: %s", customMetricsPort, customMetricsPortName))
+	controllerMetrics.AddCustomMetrics(ctx, cfg, wg, customMetricsPort, customMetricsPortName)
 
 	log.Info("Starting the Cmd.")
 

@@ -34,3 +34,8 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "kafka-autoconnector"
+            - name: CUSTOM_METRICS_PORT_NAME
+              value: "foobar-metrics"
+            - name: CUSTOM_METRICS_PORT
+              value: "5555"
+
