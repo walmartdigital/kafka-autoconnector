@@ -11,7 +11,6 @@ import (
 	monclientv1 "github.com/coreos/prometheus-operator/pkg/client/versioned/typed/monitoring/v1"
 	"github.com/gorilla/mux"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
-	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	controller_http "github.com/walmartdigital/kafka-autoconnector/pkg/http"
 	v1 "k8s.io/api/core/v1"
@@ -150,14 +149,17 @@ func (p PrometheusMetrics) DestroyMetrics() {
 }
 
 // AddCustomMetrics ...
-func (p PrometheusMetrics) AddCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup) {
-	addCustomMetrics(ctx, cfg, wg)
+func (p PrometheusMetrics) AddCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup, port int, portName string) {
+	addCustomMetrics(ctx, cfg, wg, port, portName)
 }
 
-func serveCustomMetrics(wg *sync.WaitGroup) error {
+func serveCustomMetrics(wg *sync.WaitGroup, port int) error {
 	router := mux.NewRouter().StrictSlash(true)
 	routerWrapper := &controller_http.RouterWrapper{Router: router}
-	httpServer := &http.Server{Addr: ":10000", Handler: router}
+	httpServer := &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: router,
+	}
 	metricsServer := controller_http.CreateServer(httpServer, routerWrapper)
 	log.Info("Starting the custom metrics server.")
 	go metricsServer.Run(wg)
@@ -166,7 +168,7 @@ func serveCustomMetrics(wg *sync.WaitGroup) error {
 
 // addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
 // the Prometheus operator
-func addCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup) {
+func addCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup, port int, portName string) {
 	// Get the namespace the operator is currently deployed in.
 	operatorNs, err := k8sutil.GetOperatorNamespace()
 	if err != nil {
@@ -176,13 +178,13 @@ func addCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup)
 		}
 	}
 
-	if err := serveCustomMetrics(wg); err != nil {
+	if err := serveCustomMetrics(wg, port); err != nil {
 		log.Info("Could not generate and serve custom resource metrics", "error", err.Error())
 	}
 
 	// Add to the below struct any other metrics ports you want to expose.
 	servicePorts := []v1.ServicePort{
-		{Port: 10000, Name: "custom-metrics", Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: 10000}},
+		{Port: int32(port), Name: portName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: int32(port)}},
 	}
 
 	// Create Service object to expose the metrics port(s).
@@ -196,12 +198,12 @@ func addCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup)
 	services := []*v1.Service{service}
 
 	// The ServiceMonitor is created in the same namespace where the operator is deployed
-	_, err = metrics.CreateServiceMonitors(cfg, operatorNs, services)
+	_, err = createServiceMonitors(cfg, operatorNs, services)
 	if err != nil {
 		log.Info("Could not create ServiceMonitor object", "error", err.Error())
 		// If this operator is deployed to a cluster without the prometheus-operator running, it will return
 		// ErrServiceMonitorNotPresent, which can be used to safely skip ServiceMonitor creation.
-		if err == metrics.ErrServiceMonitorNotPresent {
+		if err == errServiceMonitorNotPresent {
 			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects", "error", err.Error())
 		}
 	}
@@ -240,17 +242,22 @@ func initOperatorService(ctx context.Context, client crclient.Client, sp []v1.Se
 	if err != nil {
 		return nil, err
 	}
-	label := map[string]string{"name": operatorName}
+
+	selectorLabel := map[string]string{"name": operatorName}
+
+	selfLabels := make(map[string]string)
+	selfLabels["name"] = operatorName
+	selfLabels["release"] = "prometheus"
 
 	service := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-custom-metrics", operatorName),
 			Namespace: namespace,
-			Labels:    label,
+			Labels:    selfLabels,
 		},
 		Spec: v1.ServiceSpec{
 			Ports:    sp,
-			Selector: label,
+			Selector: selectorLabel,
 		},
 	}
 
@@ -341,15 +348,12 @@ func createOrUpdateService(ctx context.Context, client crclient.Client, s *v1.Se
 	return s, nil
 }
 
-// ErrServiceMonitorNotPresent ...
-var ErrServiceMonitorNotPresent = fmt.Errorf("no ServiceMonitor registered with the API")
+var errServiceMonitorNotPresent = fmt.Errorf("no ServiceMonitor registered with the API")
 
 // ServiceMonitorUpdater ...
 type ServiceMonitorUpdater func(*monitoringv1.ServiceMonitor) error
 
-// CreateServiceMonitors creates ServiceMonitors objects based on an array of Service objects.
-// If CR ServiceMonitor is not registered in the Cluster it will not attempt at creating resources.
-func CreateServiceMonitors(config *rest.Config, ns string, services []*v1.Service,
+func createServiceMonitors(config *rest.Config, ns string, services []*v1.Service,
 	updaters ...ServiceMonitorUpdater) ([]*monitoringv1.ServiceMonitor, error) {
 	// check if we can even create ServiceMonitors
 	exists, err := hasServiceMonitor(config)
@@ -357,7 +361,7 @@ func CreateServiceMonitors(config *rest.Config, ns string, services []*v1.Servic
 		return nil, err
 	}
 	if !exists {
-		return nil, ErrServiceMonitorNotPresent
+		return nil, errServiceMonitorNotPresent
 	}
 
 	var serviceMonitors []*monitoringv1.ServiceMonitor
@@ -367,7 +371,7 @@ func CreateServiceMonitors(config *rest.Config, ns string, services []*v1.Servic
 		if s == nil {
 			continue
 		}
-		sm := GenerateServiceMonitor(s)
+		sm := generateServiceMonitor(s)
 		for _, update := range updaters {
 			if err := update(sm); err != nil {
 				return nil, err
@@ -384,13 +388,12 @@ func CreateServiceMonitors(config *rest.Config, ns string, services []*v1.Servic
 	return serviceMonitors, nil
 }
 
-// GenerateServiceMonitor generates a prometheus-operator ServiceMonitor object
-// based on the passed Service object.
-func GenerateServiceMonitor(s *v1.Service) *monitoringv1.ServiceMonitor {
+func generateServiceMonitor(s *v1.Service) *monitoringv1.ServiceMonitor {
 	labels := make(map[string]string)
 	for k, v := range s.ObjectMeta.Labels {
 		labels[k] = v
 	}
+
 	endpoints := populateEndpointsFromServicePorts(s)
 	boolTrue := true
 
