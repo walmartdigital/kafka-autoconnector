@@ -5,8 +5,14 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/kelseyhightower/envconfig"
 	configcache "github.com/walmartdigital/kafka-autoconnector/pkg/cache"
 )
+
+// LabelsMap ...
+type LabelsMap struct {
+	Labels map[string]string
+}
 
 var (
 	kafkaConnectHost                = "192.168.64.5:30256"
@@ -23,6 +29,8 @@ var (
 	customMetricsPortCacheKey       = "/config/global/metrics/port/number"
 	customMetricsPortName           = "custom-metrics"
 	customMetricsPortNameCacheKey   = "/config/global/metrics/port/name"
+	customMetricsSMLabels           LabelsMap
+	customMetricsSMLabelsCacheKey   = "/config/global/metrics/servicemonitor/labels"
 )
 
 // LoadFromEnvironment loads configuration parameters from environment variables and
@@ -82,6 +90,16 @@ func LoadFromEnvironment(configCache configcache.Cache) {
 		customMetricsPortName = portName
 	}
 
+	err := envconfig.Process("service_monitor", &customMetricsSMLabels)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if customMetricsSMLabels.Labels != nil {
+		configCache.Store(customMetricsSMLabelsCacheKey, customMetricsSMLabels.Labels)
+	}
+
 	configCache.Store(kafkaConnectAddrCacheKey, kafkaConnectHost)
 	configCache.Store(reconcilePeriodCacheKey, refreshFromKafkaConnectInterval)
 	configCache.Store(maxConnectorRestartsCacheKey, maxConnectorRestarts)
@@ -89,6 +107,15 @@ func LoadFromEnvironment(configCache configcache.Cache) {
 	configCache.Store(maxTaskRestartsCacheKey, kafkaConnectHost)
 	configCache.Store(customMetricsPortCacheKey, customMetricsPort)
 	configCache.Store(customMetricsPortNameCacheKey, customMetricsPortName)
+}
+
+// GetServiceMonitorLabels returns the KafkaConnect address stored in the provided cache
+func GetServiceMonitorLabels(configCache configcache.Cache) (map[string]string, error) {
+	labels, ok := configCache.Load(customMetricsSMLabelsCacheKey)
+	if !ok {
+		return nil, errors.New("Could not retrieve Service Monitor labels from cache")
+	}
+	return labels.(map[string]string), nil
 }
 
 // GetKafkaConnectAddress returns the KafkaConnect address stored in the provided cache
