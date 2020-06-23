@@ -178,10 +178,12 @@ func main() {
 		panic(err)
 	}
 
+	serviceMonitorLabels, _ := operatorconfig.GetServiceMonitorLabels(controllerCache)
+
 	wg = new(sync.WaitGroup)
 	wg.Add(1)
 	log.V(1).Info(fmt.Sprintf("Calling AddCustomMetrics() with port: %d, portName: %s", customMetricsPort, customMetricsPortName))
-	controllerMetrics.AddCustomMetrics(ctx, cfg, wg, customMetricsPort, customMetricsPortName)
+	controllerMetrics.AddCustomMetrics(ctx, cfg, wg, customMetricsPort, customMetricsPortName, serviceMonitorLabels)
 
 	log.Info("Starting the Cmd.")
 

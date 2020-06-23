@@ -149,8 +149,8 @@ func (p PrometheusMetrics) DestroyMetrics() {
 }
 
 // AddCustomMetrics ...
-func (p PrometheusMetrics) AddCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup, port int, portName string) {
-	addCustomMetrics(ctx, cfg, wg, port, portName)
+func (p PrometheusMetrics) AddCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup, port int, portName string, labels map[string]string) {
+	addCustomMetrics(ctx, cfg, wg, port, portName, labels)
 }
 
 func serveCustomMetrics(wg *sync.WaitGroup, port int) error {
@@ -168,7 +168,7 @@ func serveCustomMetrics(wg *sync.WaitGroup, port int) error {
 
 // addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
 // the Prometheus operator
-func addCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup, port int, portName string) {
+func addCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup, port int, portName string, labels map[string]string) {
 	// Get the namespace the operator is currently deployed in.
 	operatorNs, err := k8sutil.GetOperatorNamespace()
 	if err != nil {
@@ -188,7 +188,7 @@ func addCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup,
 	}
 
 	// Create Service object to expose the metrics port(s).
-	service, err := createCustomMetricsService(ctx, cfg, servicePorts)
+	service, err := createCustomMetricsService(ctx, cfg, servicePorts, labels)
 	if err != nil {
 		log.Info("Could not create metrics Service", "error", err.Error())
 	}
@@ -209,7 +209,7 @@ func addCustomMetrics(ctx context.Context, cfg *rest.Config, wg *sync.WaitGroup,
 	}
 }
 
-func createCustomMetricsService(ctx context.Context, cfg *rest.Config, servicePorts []v1.ServicePort) (*v1.Service, error) {
+func createCustomMetricsService(ctx context.Context, cfg *rest.Config, servicePorts []v1.ServicePort, labels map[string]string) (*v1.Service, error) {
 	if len(servicePorts) < 1 {
 		return nil, fmt.Errorf("failed to create metrics Serice; service ports were empty")
 	}
@@ -217,7 +217,7 @@ func createCustomMetricsService(ctx context.Context, cfg *rest.Config, servicePo
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new client: %w", err)
 	}
-	s, err := initOperatorService(ctx, client, servicePorts)
+	s, err := initOperatorService(ctx, client, servicePorts, labels)
 	if err != nil {
 		if err == k8sutil.ErrNoNamespace || err == k8sutil.ErrRunLocal {
 			log.Info("Skipping metrics Service creation; not running in a cluster.")
@@ -233,7 +233,7 @@ func createCustomMetricsService(ctx context.Context, cfg *rest.Config, servicePo
 }
 
 // initOperatorService returns the static service which exposes specified port(s).
-func initOperatorService(ctx context.Context, client crclient.Client, sp []v1.ServicePort) (*v1.Service, error) {
+func initOperatorService(ctx context.Context, client crclient.Client, sp []v1.ServicePort, labels map[string]string) (*v1.Service, error) {
 	operatorName, err := k8sutil.GetOperatorName()
 	if err != nil {
 		return nil, err
@@ -247,7 +247,12 @@ func initOperatorService(ctx context.Context, client crclient.Client, sp []v1.Se
 
 	selfLabels := make(map[string]string)
 	selfLabels["name"] = operatorName
-	selfLabels["release"] = "prometheus"
+
+	if labels != nil {
+		for k, v := range labels {
+			selfLabels[k] = v
+		}
+	}
 
 	service := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{

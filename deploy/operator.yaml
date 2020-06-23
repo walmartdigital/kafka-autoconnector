@@ -38,4 +38,7 @@ spec:
               value: "foobar-metrics"
             - name: CUSTOM_METRICS_PORT
               value: "5555"
+            - name: SERVICE_MONITOR_LABELS
+              value: "name:kafka-autoconnector,release:prometheus,hello:world"
+            
 
