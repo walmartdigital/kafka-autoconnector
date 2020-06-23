@@ -27,9 +27,10 @@ In order to install the Kafka AutoConnector Operator, you should deploy the foll
 
 The following configuration settings can be controlled via environment variables:
 
-* **KAFKA_CONNECT_ADDR**: The address of your Kafka Connect instance.
-* **CUSTOM_METRICS_PORT**: The port on which the custom metrics will be served in the operator container.
-* **CUSTOM_METRICS_PORT_NAME**: The name of the custom metrics port in the K8s *Service* that will be created automatically.
+* **KAFKA_CONNECT_ADDR**: The address of your Kafka Connect instance
+* **CUSTOM_METRICS_PORT**: The port on which the custom metrics will be served in the operator container
+* **CUSTOM_METRICS_PORT_NAME**: The name of the custom metrics port in the K8s *Service* that will be created automatically
+* **SERVICE_MONITOR_LABELS**: The labels to apply to the custom metrics Service Monitor as a comma-separated list of key/value pairs, e.g., `name:kafka-autoconnector,release:prometheus,hello:world`. This might be relevant depending on your local Prometheus Operator configuration.
 
 ### Example Deployment
 
@@ -118,7 +119,7 @@ The Kafka AutoConnector operator exposes 3 types of metrics by default:
 
 * `kafka_autoconnector_total_connector_tasks`: The total number of tasks enabled on a connector.
 * `kafka_autoconnector_running_connector_tasks`: The number of tasks in `RUNNING` state on a given connector.
-* `kafka_autoconnector_connector_uptime`: The number of consecutive seconds that the connector has been in the `RUNNNING` state. 
+* `kafka_autoconnector_connector_uptime`: The number of consecutive seconds that the connector has been in the `RUNNING` state. 
 
 By default, the operator will install a K8s *Service* and the associated *ServiceMonitor* so as to instruct a local instance of Prometheus to scrape the aforementioned metrics.
 
