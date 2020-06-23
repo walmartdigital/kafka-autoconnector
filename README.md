@@ -30,7 +30,7 @@ The following configuration settings can be controlled via environment variables
 * **KAFKA_CONNECT_ADDR**: The address of your Kafka Connect instance
 * **CUSTOM_METRICS_PORT**: The port on which the custom metrics will be served in the operator container
 * **CUSTOM_METRICS_PORT_NAME**: The name of the custom metrics port in the K8s *Service* that will be created automatically
-* **SERVICE_MONITOR_LABELS**: The labels to apply to the custom metrics Service Monitor as a comma-separated list of key/value pairs, e.g., `name:kafka-autoconnector,release:prometheus,hello:world`. This might be relevant depending on your local Prometheus Operator configuration.
+* **SERVICE_MONITOR_LABELS**: The labels to apply to the custom metrics `ServiceMonitor` as a comma-separated list of key/value pairs, e.g., `name:kafka-autoconnector,release:prometheus,hello:world`. This might be relevant depending on your local Prometheus Operator configuration.
 
 ### Example Deployment
 
