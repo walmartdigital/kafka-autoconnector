@@ -25,7 +25,7 @@ In order to install the Kafka AutoConnector Operator, you should deploy the foll
 
 ## Configuration
 
-The following configuration aspects can be controlled via environment variables:
+The following configuration settings can be controlled via environment variables:
 
 * **KAFKA_CONNECT_ADDR**: The address of your Kafka Connect instance.
 * **CUSTOM_METRICS_PORT**: The port on which the custom metrics will be served in the operator container.
@@ -77,7 +77,7 @@ spec:
 
 ## How to Specify a Connector
 
-Once the operator and the associated CRD is installed, you can specify a connector using the GenericAutoConnector CRD as follows:
+Once the operator and the GenericAutoConnector CRD is installed, you can specify a connector as follows:
 
 ```yaml
 apiVersion: skynet.walmartdigital.cl/v1alpha1
@@ -110,7 +110,7 @@ spec:
     max.tasks: "2"
 ```
 
-**Note**: Make sure all configuration parameters values are of type `string`, Kafka Connect will take care of converting these values to the appropriate data types when loading the configuration.
+**Note**: Make sure all configuration parameters values are of type `string`, Kafka Connect will take care of converting these values to the appropriate data types when loading the configuration of the specified connector type.
 
 ## Metrics
 
@@ -128,9 +128,9 @@ By default, the operator will install a K8s *Service* and the associated *Servic
 
 In order to run the Kafka AutoConnector Operator on your local machine, you will need the following tools:
 
-* Minikube
-* Skaffold
-* Helm 3
+* Minikube (tested on v1.8.2 and K8s v1.17.3)
+* Skaffold (tested on v1.7.0)
+* Helm 3 (tested on v3.1.2)
 
 If you want to test the metrics feature or the operator's integration with Elasticsearch, you will need to manually add the corresponding Helm repos manually:
 
@@ -139,6 +139,8 @@ helm repo add elastic https://helm.elastic.co
 helm repo add stable https://kubernetes-charts.storage.googleapis.com
 helm repo update
 ```
+
+If you plan to run the operator with the full E2E stack, it is preferable to run Minikube with at least 8Gb of RAM and 4 CPUs. 
 
 To build the Docker image for the operator, use the Operator SDK. From the root of the repo, run:
 ```
