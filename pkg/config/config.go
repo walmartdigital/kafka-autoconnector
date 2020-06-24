@@ -104,7 +104,7 @@ func LoadFromEnvironment(configCache configcache.Cache) {
 	configCache.Store(reconcilePeriodCacheKey, refreshFromKafkaConnectInterval)
 	configCache.Store(maxConnectorRestartsCacheKey, maxConnectorRestarts)
 	configCache.Store(maxConnectorHardResetsCacheKey, maxConnectorHardResets)
-	configCache.Store(maxTaskRestartsCacheKey, kafkaConnectHost)
+	configCache.Store(maxTaskRestartsCacheKey, maxTaskRestarts)
 	configCache.Store(customMetricsPortCacheKey, customMetricsPort)
 	configCache.Store(customMetricsPortNameCacheKey, customMetricsPortName)
 }
