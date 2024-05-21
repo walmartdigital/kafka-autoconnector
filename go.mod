@@ -19,7 +19,7 @@ require (
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/tools v0.0.0-20200601175630-2caf76543d99 // indirect
 	k8s.io/api v0.17.4
-	k8s.io/apimachinery v0.17.4
+	k8s.io/apimachinery v0.17.9
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.5.4
 )
